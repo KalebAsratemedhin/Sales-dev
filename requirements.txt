@@ -1,0 +1,12 @@
+Django
+celery
+redis
+python-dotenv
+djangorestframework
+dj-database-url
+psycopg[binary]
+langchain
+langchain-google-genai
+langchain-core
+pydantic
+requests
