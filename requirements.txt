@@ -10,3 +10,8 @@ langchain-google-genai
 langchain-core
 pydantic
 requests
+pika
+langchain
+langchain-google-genai
+langchain-core
+pydantic

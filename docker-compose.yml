@@ -1,0 +1,121 @@
+services:
+  postgres-leads:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-salesdev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-salesdev}
+      POSTGRES_DB: ${LEADS_DB:-leads_db}
+    volumes:
+      - postgres_leads_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-salesdev} -d ${LEADS_DB:-leads_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-research:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-salesdev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-salesdev}
+      POSTGRES_DB: ${RESEARCH_DB:-research_db}
+    volumes:
+      - postgres_research_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-salesdev} -d ${RESEARCH_DB:-research_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  postgres-outreach:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-salesdev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-salesdev}
+      POSTGRES_DB: ${OUTREACH_DB:-outreach_db}
+    volumes:
+      - postgres_outreach_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-salesdev} -d ${OUTREACH_DB:-outreach_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  leads:
+    build:
+      context: ./server/leads
+      dockerfile: Dockerfile
+    environment:
+      LEADS_DATABASE_URL: postgres://${POSTGRES_USER:-salesdev}:${POSTGRES_PASSWORD:-salesdev}@postgres-leads:5432/${LEADS_DB:-leads_db}
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/%2F
+      SECRET_KEY: ${SECRET_KEY:-change-me-leads}
+      DEBUG: "false"
+    depends_on:
+      postgres-leads:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    expose:
+      - "8000"
+
+  research:
+    build:
+      context: ./server/research
+      dockerfile: Dockerfile
+    environment:
+      RESEARCH_DATABASE_URL: postgres://${POSTGRES_USER:-salesdev}:${POSTGRES_PASSWORD:-salesdev}@postgres-research:5432/${RESEARCH_DB:-research_db}
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/%2F
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      SECRET_KEY: ${SECRET_KEY:-change-me-research}
+      DEBUG: "false"
+    depends_on:
+      postgres-research:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    expose:
+      - "8000"
+
+  outreach:
+    build:
+      context: ./server/outreach
+      dockerfile: Dockerfile
+    environment:
+      OUTREACH_DATABASE_URL: postgres://${POSTGRES_USER:-salesdev}:${POSTGRES_PASSWORD:-salesdev}@postgres-outreach:5432/${OUTREACH_DB:-outreach_db}
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/%2F
+      SECRET_KEY: ${SECRET_KEY:-change-me-outreach}
+      DEBUG: "false"
+    depends_on:
+      postgres-outreach:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    expose:
+      - "8000"
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - leads
+      - research
+      - outreach
+
+volumes:
+  postgres_leads_data:
+  postgres_research_data:
+  postgres_outreach_data:
+  rabbitmq_data:
