@@ -1,3 +1,3 @@
-from django.db import models
+from config.models import Lead, Persona
 
-# Create your models here.
+__all__ = ["Lead", "Persona"]
