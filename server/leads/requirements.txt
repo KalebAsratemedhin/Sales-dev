@@ -7,3 +7,5 @@ pika
 gunicorn
 scrapy>=2.11
 requests>=2.28
+selenium>=4.0
+undetected-chromedriver>=3.5

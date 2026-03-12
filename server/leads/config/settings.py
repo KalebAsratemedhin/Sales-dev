@@ -28,7 +28,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     "rest_framework",
-    "core"
+    "core",
+    "linkedin",
 ]
 
 MIDDLEWARE = [
@@ -93,5 +94,11 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+
+# LinkedIn (session-based; no OAuth app)
+# Optional: path to store session cookies (default: BASE_DIR/data/linkedin_session.json)
+# LINKEDIN_SESSION_PATH = os.path.join(BASE_DIR, 'data', 'linkedin_session.json')
+# Credentials for refresh_session (set in env): LINKEDIN_EMAIL, LINKEDIN_PASSWORD
+# LINKEDIN_HEADLESS = True  # set False to see browser during refresh
 
 

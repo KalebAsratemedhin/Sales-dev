@@ -1,7 +1,11 @@
 .env
 .venv/
+.playwright-linkedin/
+.linkedin_tokens.json
 __pycache__/
 *.pyc
 db.sqlite3
 *.log
 docs/
+data/
+**/linkedin_session.json
