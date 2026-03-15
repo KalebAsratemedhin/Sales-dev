@@ -1,11 +1,6 @@
-"""
-Sync leads from LinkedIn post engagement (comments + reactions).
-Accepts post URLs, activity URLs, or numeric activity IDs.
-"""
-
 from django.core.management.base import BaseCommand
 
-from linkedin.leads_sync import sync_leads_from_posts
+from linkedin.sync import sync_leads_from_posts
 
 
 class Command(BaseCommand):

@@ -1,13 +1,33 @@
-"""
-Refresh LinkedIn session: log in with Selenium and save cookies for API use.
-Requires LINKEDIN_EMAIL and LINKEDIN_PASSWORD in environment or .env.
-"""
-
 import os
+import sys
+from pathlib import Path
 
-from django.core.management.base import BaseCommand
+from django.conf import settings
+from django.core.management.base import BaseCommand, CommandError
 
-from linkedin.session import refresh_session
+from linkedin.core.session import refresh_session
+
+
+def check_selenium_available():
+    try:
+        import selenium
+        import undetected_chromedriver
+    except ImportError as e:
+        raise CommandError(
+            "Selenium or undetected-chromedriver not found in this Python environment.\n"
+            "Python used: %s\n"
+            "Install in the same environment: pip install selenium undetected-chromedriver\n"
+            "Original error: %s" % (sys.executable, e)
+        )
+
+
+def load_env():
+    try:
+        from dotenv import load_dotenv
+        env_path = Path(settings.BASE_DIR) / ".env"
+        load_dotenv(env_path)
+    except ImportError:
+        pass
 
 
 class Command(BaseCommand):
@@ -21,25 +41,26 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        check_selenium_available()
+        load_env()
         email = os.environ.get("LINKEDIN_EMAIL", "").strip()
         password = os.environ.get("LINKEDIN_PASSWORD", "").strip()
         if not email or not password:
-            self.stderr.write(
+            raise CommandError(
                 "Set LINKEDIN_EMAIL and LINKEDIN_PASSWORD in the environment or .env."
             )
-            return 1
         headless = not options["no_headless"]
         self.stdout.write("Logging in to LinkedIn (headless=%s)..." % headless)
         try:
             ok = refresh_session(email, password, headless=headless)
             if ok:
                 self.stdout.write(self.style.SUCCESS("Session saved. You can run linkedin_sync_post now."))
-                return 0
-            self.stderr.write(
+                return
+            raise CommandError(
                 "Login may have failed (no li_at cookie). "
                 "Try --no-headless and complete 2FA in the browser, then run again."
             )
-            return 1
+        except CommandError:
+            raise
         except Exception as e:
-            self.stderr.write(self.style.ERROR(str(e)))
-            return 1
+            raise CommandError(str(e))

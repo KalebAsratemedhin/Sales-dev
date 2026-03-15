@@ -1,25 +1,19 @@
-"""
-LinkedIn REST API client: comments and reactions using session cookies.
-"""
-
 import requests
 from urllib.parse import quote
 
-from linkedin.constants import (
+from linkedin.core.constants import (
     LINKEDIN_API_BASE,
     LINKEDIN_VERSION,
     RESTLI_PROTOCOL_VERSION,
 )
-from linkedin.session import load_cookies, cookies_to_header_dict
+from linkedin.core.session import load_cookies, cookies_to_header_dict
 
 
 class LinkedInAPIError(Exception):
-    """Raised when the API returns an error or missing session."""
     pass
 
 
 def _ensure_session():
-    """Return cookie dict for API requests; raise if no valid session."""
     cookies = load_cookies()
     if not cookies:
         raise LinkedInAPIError("No LinkedIn session. Run: python manage.py linkedin_refresh_session")
@@ -27,7 +21,6 @@ def _ensure_session():
 
 
 def _headers() -> dict[str, str]:
-    """Standard headers for LinkedIn REST API."""
     return {
         "LinkedIn-Version": LINKEDIN_VERSION,
         "X-Restli-Protocol-Version": RESTLI_PROTOCOL_VERSION,
@@ -36,11 +29,6 @@ def _headers() -> dict[str, str]:
 
 
 def get_comments(activity_urn: str) -> list[dict]:
-    """
-    Fetch comments on a post (share).
-    activity_urn: e.g. urn:li:activity:7302346926123798528
-    Returns list of comment objects; each has 'actor' (person URN) and 'message'.
-    """
     cookie_dict = _ensure_session()
     encoded = quote(activity_urn, safe="")
     url = f"{LINKEDIN_API_BASE}/socialActions/{encoded}/comments"
@@ -61,11 +49,6 @@ def get_comments(activity_urn: str) -> list[dict]:
 
 
 def get_reactions(activity_urn: str, sort: str = "REVERSE_CHRONOLOGICAL") -> list[dict]:
-    """
-    Fetch reactions on a post.
-    activity_urn: e.g. urn:li:activity:7302346926123798528
-    Returns list of reaction objects; each has 'created': {'actor': person URN}.
-    """
     cookie_dict = _ensure_session()
     encoded = quote(activity_urn, safe="")
     url = f"{LINKEDIN_API_BASE}/reactions/(entity:{encoded})"
@@ -88,7 +71,6 @@ def get_reactions(activity_urn: str, sort: str = "REVERSE_CHRONOLOGICAL") -> lis
 
 
 def person_urn_to_profile_url(urn: str) -> str:
-    """Turn urn:li:person:ABC123 into a profile URL."""
     if not urn or not urn.startswith("urn:li:person:"):
         return ""
     person_id = urn.replace("urn:li:person:", "", 1)

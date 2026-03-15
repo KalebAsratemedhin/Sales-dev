@@ -60,6 +60,8 @@ services:
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/%2F
       SECRET_KEY: ${SECRET_KEY:-change-me-leads}
       DEBUG: "false"
+    volumes:
+      - linkedin_data:/app/data
     depends_on:
       postgres-leads:
         condition: service_healthy
@@ -119,3 +121,4 @@ volumes:
   postgres_research_data:
   postgres_outreach_data:
   rabbitmq_data:
+  linkedin_data:

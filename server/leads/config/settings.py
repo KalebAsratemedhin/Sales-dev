@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     "rest_framework",
+    "config",  # Lead, Persona live in config.models
     "core",
     "linkedin",
 ]
@@ -101,4 +102,27 @@ STATIC_URL = 'static/'
 # Credentials for refresh_session (set in env): LINKEDIN_EMAIL, LINKEDIN_PASSWORD
 # LINKEDIN_HEADLESS = True  # set False to see browser during refresh
 
-
+# Logging: show sync/scrape progress (what is obtained, processed, succeeded/failed)
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {name} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        "linkedin": {
+            "level": "INFO",
+            "handlers": ["console"],
+            "propagate": False,
+        },
+    },
+}
