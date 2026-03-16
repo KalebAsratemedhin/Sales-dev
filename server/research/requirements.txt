@@ -9,3 +9,5 @@ langchain-google-genai
 langchain-core
 pydantic
 gunicorn
+trafilatura
+requests

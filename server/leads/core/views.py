@@ -1,4 +1,8 @@
-from rest_framework import viewsets
+from django.conf import settings
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
 from core.models import Lead
 from core.serializers import LeadSerializer
 from core.messaging import publish_research_request
@@ -17,7 +21,25 @@ class LeadViewSet(viewsets.ModelViewSet):
                 lead.name,
                 lead.company_name,
                 lead.company_website,
+                persona=getattr(lead, "persona", None) and lead.persona,
             )
+
+    @action(detail=True, methods=["post"], url_path="set_status")
+    def set_status(self, request, pk=None):
+        secret = getattr(settings, "LEADS_SERVICE_INTERNAL_SECRET", None)
+        if secret and request.headers.get("X-Internal-Secret") != secret:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        lead = self.get_object()
+        new_status = (request.data or {}).get("status")
+        if not new_status or new_status not in dict(Lead.Status.choices):
+            return Response(
+                {"error": "invalid or missing status"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        lead.status = new_status
+        lead.save(update_fields=["status", "updated_at"])
+        return Response({"status": lead.status})
 
     def get_queryset(self):
         qs = super().get_queryset()

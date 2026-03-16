@@ -6,6 +6,7 @@ class Research(models.Model):
     website_summary = models.TextField(blank=True)
     pain_points = models.JSONField(default=list)
     use_cases = models.JSONField(default=list)
+    raw_content_preview = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

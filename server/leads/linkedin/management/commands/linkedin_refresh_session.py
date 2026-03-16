@@ -10,8 +10,8 @@ from linkedin.core.session import refresh_session
 
 def check_selenium_available():
     try:
-        import selenium
         import undetected_chromedriver
+        import selenium
     except ImportError as e:
         raise CommandError(
             "Selenium or undetected-chromedriver not found in this Python environment.\n"

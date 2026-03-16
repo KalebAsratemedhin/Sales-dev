@@ -4,4 +4,10 @@ psycopg2-binary
 python-dotenv
 pika
 djangorestframework
+langchain
+langchain-google-genai
+langchain-core
+pydantic
+chromadb
 gunicorn
+requests

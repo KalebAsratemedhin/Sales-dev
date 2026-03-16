@@ -96,6 +96,8 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+LEADS_SERVICE_INTERNAL_SECRET = os.environ.get("LEADS_SERVICE_INTERNAL_SECRET", "")
+
 # LinkedIn (session-based; no OAuth app)
 # Optional: path to store session cookies (default: BASE_DIR/data/linkedin_session.json)
 # LINKEDIN_SESSION_PATH = os.path.join(BASE_DIR, 'data', 'linkedin_session.json')

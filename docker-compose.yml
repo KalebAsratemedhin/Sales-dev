@@ -97,6 +97,10 @@ services:
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/%2F
       SECRET_KEY: ${SECRET_KEY:-change-me-outreach}
       DEBUG: "false"
+      CHROMA_HOST: http://chroma:8000
+      GMAIL_SENDER: ${GMAIL_SENDER:-}
+      GMAIL_PASSWORD: ${GMAIL_PASSWORD:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
     depends_on:
       postgres-outreach:
         condition: service_healthy
@@ -104,6 +108,28 @@ services:
         condition: service_healthy
     expose:
       - "8000"
+
+  chroma:
+    image: chromadb/chroma:latest
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      IS_PERSISTENT: "TRUE"
+      PERSIST_DIRECTORY: "/chroma/chroma"
+    expose:
+      - "8000"
+
+  n8n:
+    image: n8nio/n8n:latest
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: "admin"
+      N8N_BASIC_AUTH_PASSWORD: "${N8N_PASSWORD:-changeme}"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    restart: unless-stopped
 
   nginx:
     image: nginx:alpine
@@ -121,4 +147,6 @@ volumes:
   postgres_research_data:
   postgres_outreach_data:
   rabbitmq_data:
+  chroma_data:
   linkedin_data:
+  n8n_data:
