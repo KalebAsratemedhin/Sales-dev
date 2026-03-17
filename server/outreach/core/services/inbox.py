@@ -1,14 +1,18 @@
 from agent.agent import handle_inbox_reply
 from core.exceptions import ExpectedError
 from core.models import EmailThread, SentEmail
+from core.rate_limit import rate_limit_llm_outreach
 
 
 class InboxService:
     def build_thread_messages(self, thread: EmailThread) -> list[dict]:
         messages: list[dict] = []
-        for email in thread.emails.order_by("sent_at"):
+        emails = thread.emails.order_by("sent_at")
+        recent = emails[max(0, emails.count() - 10) :]
+        for email in recent:
             author = "you" if email.direction == SentEmail.Direction.OUTBOUND else "lead"
-            messages.append({"author": author, "body": ""})
+            body = (email.body or "")[:2000]
+            messages.append({"author": author, "body": body})
         return messages
 
     def handle_reply(self, payload: dict) -> dict:
@@ -46,6 +50,14 @@ class InboxService:
 
         new_message = {"body": raw_body}
 
+        SentEmail.objects.create(
+            thread=thread,
+            message_id="",
+            direction=SentEmail.Direction.INBOUND,
+            body=raw_body,
+        )
+
+        rate_limit_llm_outreach()
         return handle_inbox_reply(
             thread_messages=thread_messages,
             new_message=new_message,

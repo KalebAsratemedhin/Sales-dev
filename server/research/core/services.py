@@ -4,6 +4,7 @@ from core.exceptions import ExpectedError
 from core.extraction import gather_site_text
 from core.messaging import publish_lead_status_update, publish_outreach_request
 from core.models import Research
+from core.rate_limit import rate_limit_llm_research
 from core.utils import run_with_retries
 from agent.agent import analyze_website
 
@@ -54,6 +55,7 @@ def run_research_from_payload(payload):
     raw_preview = (text or "")[:RAW_CONTENT_PREVIEW_MAX]
     persona = _persona_from_payload(payload)
 
+    rate_limit_llm_research()
     result = run_with_retries(
         analyze_website,
         retries=LLM_RETRIES,

@@ -7,6 +7,7 @@ from core.email import send_via_smtp
 from core.exceptions import ExpectedError, TransientError
 from core.messaging import publish_lead_status_update
 from core.models import EmailThread, SentEmail
+from core.rate_limit import rate_limit_gmail, rate_limit_llm_outreach
 
 
 class OutreachEmailService:
@@ -51,6 +52,7 @@ class OutreachEmailService:
         sender = (os.environ.get("GMAIL_SENDER") or "").strip()
         password = (os.environ.get("GMAIL_PASSWORD") or "").strip()
         if sender and password:
+            rate_limit_gmail()
             return send_via_smtp(sender, password, to_email, subject, body)
         return self._send_email_stub(subject, body)
 
@@ -82,6 +84,7 @@ class OutreachEmailService:
 
         persona = payload.get("persona") or {}
 
+        rate_limit_llm_outreach()
         draft = draft_outreach_email(lead, research, persona)
 
         subject = draft.get("subject") or ""
@@ -106,6 +109,7 @@ class OutreachEmailService:
             thread=thread,
             message_id=message_id,
             direction=SentEmail.Direction.OUTBOUND,
+            body=body,
         )
 
         publish_lead_status_update(lead_id, "emailed")

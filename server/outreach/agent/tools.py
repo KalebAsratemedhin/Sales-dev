@@ -2,10 +2,12 @@ import os
 from glob import glob
 from pathlib import Path
 
-import requests
-
 from core.models import OutreachConfig
 from core.rag import search_chroma
+
+
+def _get_config() -> OutreachConfig:
+    return OutreachConfig.get_singleton()
 
 
 def _docs_base_dir() -> Path:
@@ -60,25 +62,11 @@ def search_product_docs(query: str, max_results: int = 5) -> list[dict]:
 
 
 def get_calendly_link(lead_email: str | None = None) -> str:
+    """Return configured Calendly URL only (no API calls)."""
     try:
         config = _get_config()
         if config.calendly_scheduling_url:
             return config.calendly_scheduling_url.strip()
     except Exception:
         pass
-    if os.environ.get("CALENDLY_SCHEDULING_LINK"):
-        return os.environ["CALENDLY_SCHEDULING_LINK"]
-    token = os.environ.get("CALENDLY_API_TOKEN")
-    if not token:
-        return ""
-    try:
-        resp = requests.get(
-            "https://api.calendly.com/users/me",
-            headers={"Authorization": f"Bearer {token}"},
-            timeout=10,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return data.get("resource", {}).get("scheduling_url", "") or ""
-    except requests.RequestException:
-        return ""
+    return (os.environ.get("CALENDLY_SCHEDULING_LINK") or "").strip()

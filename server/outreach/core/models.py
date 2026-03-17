@@ -45,6 +45,7 @@ class SentEmail(models.Model):
     message_id = models.CharField(max_length=255)
     sent_at = models.DateTimeField(auto_now_add=True)
     direction = models.CharField(max_length=16, choices=Direction.choices)
+    body = models.TextField(blank=True, default="")
 
     def __str__(self):
         return f"{self.direction} {self.message_id}"
