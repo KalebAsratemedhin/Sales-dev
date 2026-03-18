@@ -5,7 +5,7 @@ from rest_framework.response import Response
 
 from core.exceptions import ExpectedError, TransientError
 from core.api import config_detail, ingest_docs
-from core.services import handle_inbox_reply_from_http
+from core.services.inbox import handle_inbox_reply_from_http
 
 
 @api_view(["POST"])

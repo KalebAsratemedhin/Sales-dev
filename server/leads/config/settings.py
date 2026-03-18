@@ -15,7 +15,7 @@ SECRET_KEY = 'django-insecure-r-&_r*z&y9^o-_o6t&-do917$y6@3(y9%%d^hvhj_j8&ca3vi9
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 
 # Application definition
@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    "corsheaders",
     "rest_framework",
     "config",  # Lead, Persona live in config.models
     "core",
@@ -36,6 +37,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -97,6 +99,9 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 LEADS_SERVICE_INTERNAL_SECRET = os.environ.get("LEADS_SERVICE_INTERNAL_SECRET", "")
+
+# CORS: allow Next.js dev server (and any configured origin)
+CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 
 # LinkedIn (session-based; no OAuth app)
 # Optional: path to store session cookies (default: BASE_DIR/data/linkedin_session.json)

@@ -10,7 +10,7 @@ import django
 django.setup()
 
 from core.exceptions import ExpectedError, TransientError
-from core.services import run_outreach_from_payload
+from core.services.outreach_email import run_outreach_from_payload
 
 from core.messaging.publish import RABBITMQ_URL
 

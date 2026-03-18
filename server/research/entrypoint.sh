@@ -1,5 +1,5 @@
 #!/bin/bash
 set -e
 python manage.py migrate --noinput
-python core/run_consumer.py &
+python -m core.run_consumer &
 exec "$@"

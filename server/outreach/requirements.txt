@@ -1,4 +1,5 @@
 Django
+django-cors-headers
 dj-database-url
 psycopg2-binary
 python-dotenv
@@ -11,3 +12,4 @@ pydantic
 chromadb
 gunicorn
 requests
+redis

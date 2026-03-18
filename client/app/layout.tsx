@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { Space_Grotesk } from "next/font/google";
+import { Outfit } from "next/font/google";
 import { StoreProvider } from "@/components/providers/StoreProvider";
-import { AppShell } from "@/components/shared/AppShell";
+import { ConditionalShell } from "@/components/shared/ConditionalShell";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
+const outfit = Outfit({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-space-grotesk",
+  variable: "--font-outfit",
   display: "swap",
 });
 
@@ -29,9 +29,9 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className={`${spaceGrotesk.variable} antialiased bg-background text-slate-100`}>
+      <body className={`${outfit.variable} antialiased bg-background text-slate-100 font-sans`}>
         <StoreProvider>
-          <AppShell>{children}</AppShell>
+          <ConditionalShell>{children}</ConditionalShell>
         </StoreProvider>
       </body>
     </html>

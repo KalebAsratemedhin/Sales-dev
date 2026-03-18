@@ -5,7 +5,7 @@ from uuid import uuid4
 from agent.agent import draft_outreach_email
 from core.email import send_via_smtp
 from core.exceptions import ExpectedError, TransientError
-from core.messaging import publish_lead_status_update
+from core.messaging.publish import publish_lead_status_update
 from core.models import EmailThread, SentEmail
 from core.rate_limit import rate_limit_gmail, rate_limit_llm_outreach
 

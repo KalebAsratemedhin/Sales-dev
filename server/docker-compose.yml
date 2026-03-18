@@ -72,8 +72,8 @@ services:
 
   research:
     build:
-      context: ./research
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: research/Dockerfile
     environment:
       RESEARCH_DATABASE_URL: postgres://${POSTGRES_USER:-salesdev}:${POSTGRES_PASSWORD:-salesdev}@postgres-research:5432/${RESEARCH_DB:-research_db}
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/%2F
@@ -90,8 +90,8 @@ services:
 
   outreach:
     build:
-      context: ./outreach
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: outreach/Dockerfile
     environment:
       OUTREACH_DATABASE_URL: postgres://${POSTGRES_USER:-salesdev}:${POSTGRES_PASSWORD:-salesdev}@postgres-outreach:5432/${OUTREACH_DB:-outreach_db}
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/%2F

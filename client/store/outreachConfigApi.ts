@@ -8,7 +8,7 @@ const baseUrl = base ? `${base}/api/outreach` : "/api/outreach";
 export const outreachConfigApi = createApi({
   reducerPath: "outreachConfigApi",
   baseQuery: fetchBaseQuery({
-    baseUrl: baseUrl ? `${baseUrl}/api/outreach` : "/api/outreach",
+    baseUrl,
     prepareHeaders: (headers) => {
       headers.set("Content-Type", "application/json");
       return headers;

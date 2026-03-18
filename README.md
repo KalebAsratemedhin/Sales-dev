@@ -73,22 +73,10 @@ A full-stack **autonomous sales development** system: lead storage, website rese
 ```bash
 cd client
 npm install
-```
-
-Set the backend base URL (for Leads and Outreach config APIs):
-
-```bash
-# .env.local (create in client/)
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-```
-
-Run the dev server:
-
-```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The dashboard will show leads and config when the backend is running and reachable.
+Open [http://localhost:3000](http://localhost:3000). The dashboard shows leads, configuration, and research/outreach status when the backend is available.
 
 ### Server (backend)
 

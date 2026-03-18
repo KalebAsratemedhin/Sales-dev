@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: "dashboard" },
+  { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/leads", label: "Leads", icon: "group" },
   { href: "/research", label: "Research", icon: "track_changes" },
   { href: "/outreach", label: "Outreach", icon: "send" },
@@ -13,7 +13,7 @@ const navItems = [
 ];
 
 function getHeaderFromPath(pathname: string): { title: string; breadcrumb?: { href: string; label: string } } {
-  if (pathname === "/") return { title: "Dashboard" };
+  if (pathname === "/dashboard") return { title: "Dashboard" };
   if (pathname === "/leads") return { title: "Leads" };
   if (pathname.startsWith("/leads/") && pathname !== "/leads") {
     return { title: "Lead Details", breadcrumb: { href: "/leads", label: "Leads" } };
@@ -54,7 +54,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 px-4 space-y-2 py-4">
           {navItems.map(({ href, label, icon }) => {
             const isActive =
-              pathname === href || (href !== "/" && pathname.startsWith(href));
+              pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
             return (
               <Link
                 key={href}
