@@ -11,3 +11,4 @@ requests>=2.28
 setuptools>=65.0  # provides distutils for Python 3.12+
 selenium>=4.0
 undetected-chromedriver>=3.5
+djangorestframework-simplejwt

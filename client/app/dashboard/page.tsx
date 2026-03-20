@@ -73,7 +73,7 @@ export default function DashboardPage() {
                   View all leads
                 </Link>
                 <Link
-                  href="/config"
+                  href="/settings"
                   className="text-sm font-medium text-primary hover:underline"
                 >
                   Configuration

@@ -7,7 +7,6 @@ import django
 django.setup()
 
 from core.exceptions import ExpectedError, TransientError
-from core.services import run_research_from_payload
 
 RABBITMQ_URL = os.environ.get("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/%2F")
 
@@ -29,8 +28,15 @@ def publish_lead_status_update(lead_id, status):
 
 
 def publish_outreach_request(
-    lead_id, email, name, company_name, company_website,
-    research_summary, pain_points, use_cases,
+    lead_id,
+    email,
+    name,
+    company_name,
+    company_website,
+    research_summary,
+    pain_points,
+    use_cases,
+    user_id: int | None = None,
 ):
     payload = {
         "lead_id": lead_id,
@@ -41,6 +47,7 @@ def publish_outreach_request(
         "research_summary": research_summary,
         "pain_points": pain_points,
         "use_cases": use_cases,
+        "user_id": user_id or 0,
     }
     conn = pika.BlockingConnection(pika.URLParameters(RABBITMQ_URL))
     try:
@@ -70,6 +77,10 @@ def run_consumer():
             return
 
         try:
+            # Local import breaks the circular dependency between `core.messaging`
+            # and `core.services` during module initialization.
+            from core.services import run_research_from_payload
+
             run_research_from_payload(payload)
             ch.basic_ack(delivery_tag=method.delivery_tag)
         except ExpectedError as e:

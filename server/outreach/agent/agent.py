@@ -79,6 +79,7 @@ def handle_inbox_reply(
     new_message: dict,
     lead: dict,
     research: dict,
+    user_id: int = 0,
 ) -> dict:
     llm = get_llm()
     structured_llm = llm.with_structured_output(InboxReply)
@@ -104,13 +105,13 @@ def handle_inbox_reply(
 
     latest_message = new_message.get("body") or ""
 
-    docs_snippets = search_product_docs(latest_message, max_results=3)
+    docs_snippets = search_product_docs(latest_message, max_results=3, user_id=user_id)
     if docs_snippets:
         docs_block = "\n\n".join(snippet["snippet"] for snippet in docs_snippets)
     else:
         docs_block = "(no docs found)"
 
-    calendly_link = get_calendly_link(lead.get("email"))
+    calendly_link = get_calendly_link(user_id)
 
     try:
         result = chain.invoke(

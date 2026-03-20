@@ -1,19 +1,14 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi } from "@reduxjs/toolkit/query/react";
 import type { OutreachConfig } from "@/types";
 import { getApiBase } from "@/lib/apiBase";
+import { createBaseQueryWithReauth } from "@/lib/baseQueryWithReauth";
 
 const base = getApiBase();
 const baseUrl = base ? `${base}/api/outreach` : "/api/outreach";
 
 export const outreachConfigApi = createApi({
   reducerPath: "outreachConfigApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl,
-    prepareHeaders: (headers) => {
-      headers.set("Content-Type", "application/json");
-      return headers;
-    },
-  }),
+  baseQuery: createBaseQueryWithReauth(baseUrl),
   tagTypes: ["Config"],
   endpoints: (builder) => ({
     getConfig: builder.query<OutreachConfig, void>({

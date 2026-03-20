@@ -20,6 +20,7 @@ class OutreachEmailService:
     def _get_or_create_thread(
         self,
         lead_id: int,
+        user_id: int,
         subject: str | None,
         gmail_thread_id: str | None,
         company_name: str | None,
@@ -27,7 +28,10 @@ class OutreachEmailService:
         pain_points: list,
         use_cases: list,
     ) -> EmailThread:
-        thread, _ = EmailThread.objects.get_or_create(lead_id=lead_id)
+        thread, _ = EmailThread.objects.get_or_create(lead_id=lead_id, defaults={"user_id": user_id})
+        if thread.user_id != user_id:
+            thread.user_id = user_id
+            thread.save(update_fields=["user_id"])
 
         if subject:
             thread.subject = subject
@@ -58,6 +62,7 @@ class OutreachEmailService:
 
     def run_from_payload(self, payload: dict) -> None:
         lead_id = payload.get("lead_id")
+        user_id = payload.get("user_id") or 0
         email = (payload.get("email") or "").strip()
 
         if lead_id is None:
@@ -97,6 +102,7 @@ class OutreachEmailService:
 
         thread = self._get_or_create_thread(
             lead_id=lead_id,
+            user_id=user_id,
             subject=subject,
             gmail_thread_id=thread_id,
             company_name=lead["company_name"],

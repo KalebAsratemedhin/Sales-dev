@@ -23,6 +23,7 @@ class Lead(models.Model):
 
 class EmailThread(models.Model):
     lead_id = models.BigIntegerField(db_index=True)
+    user_id = models.BigIntegerField(db_index=True, default=0)
     gmail_thread_id = models.CharField(max_length=255, blank=True)
     subject = models.CharField(max_length=512, blank=True)
     company_name = models.CharField(max_length=255, blank=True)

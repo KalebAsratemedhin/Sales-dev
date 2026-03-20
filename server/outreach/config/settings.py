@@ -101,3 +101,6 @@ STATIC_URL = 'static/'
 
 # CORS: allow Next.js dev server (and any configured origin)
 CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+
+# Internal service-to-service calls from `leads` (e.g. product doc ingestion).
+LEADS_SERVICE_INTERNAL_SECRET = os.environ.get("LEADS_SERVICE_INTERNAL_SECRET", "")

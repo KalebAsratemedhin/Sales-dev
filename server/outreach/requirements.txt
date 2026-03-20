@@ -13,3 +13,4 @@ chromadb
 gunicorn
 requests
 redis
+djangorestframework-simplejwt

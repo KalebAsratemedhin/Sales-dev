@@ -1,19 +1,14 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { createApi } from "@reduxjs/toolkit/query/react";
 import type { Lead } from "@/types";
 import { getApiBase } from "@/lib/apiBase";
+import { createBaseQueryWithReauth } from "@/lib/baseQueryWithReauth";
 
 const base = getApiBase();
 const baseUrl = base ? `${base}/api/leads` : "/api/leads";
 
 export const leadsApi = createApi({
   reducerPath: "leadsApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl,
-    prepareHeaders: (headers) => {
-      headers.set("Content-Type", "application/json");
-      return headers;
-    },
-  }),
+  baseQuery: createBaseQueryWithReauth(baseUrl),
   tagTypes: ["Leads", "Lead"],
   endpoints: (builder) => ({
     getLeads: builder.query<Lead[], { status?: string } | void>({

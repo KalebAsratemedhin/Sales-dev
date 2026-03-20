@@ -58,10 +58,12 @@ services:
     environment:
       LEADS_DATABASE_URL: postgres://${POSTGRES_USER:-salesdev}:${POSTGRES_PASSWORD:-salesdev}@postgres-leads:5432/${LEADS_DB:-leads_db}
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/%2F
+      LEADS_SERVICE_INTERNAL_SECRET: ${LEADS_SERVICE_INTERNAL_SECRET:-dev-internal-secret}
       SECRET_KEY: ${SECRET_KEY:-change-me-leads}
       DEBUG: "false"
     volumes:
       - linkedin_data:/app/data
+      - media_data:/data
     depends_on:
       postgres-leads:
         condition: service_healthy
@@ -95,6 +97,7 @@ services:
     environment:
       OUTREACH_DATABASE_URL: postgres://${POSTGRES_USER:-salesdev}:${POSTGRES_PASSWORD:-salesdev}@postgres-outreach:5432/${OUTREACH_DB:-outreach_db}
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/%2F
+      LEADS_SERVICE_INTERNAL_SECRET: ${LEADS_SERVICE_INTERNAL_SECRET:-dev-internal-secret}
       SECRET_KEY: ${SECRET_KEY:-change-me-outreach}
       DEBUG: "false"
       CHROMA_HOST: http://chroma:8000
@@ -108,6 +111,8 @@ services:
         condition: service_healthy
     expose:
       - "8000"
+    volumes:
+      - media_data:/data
 
   chroma:
     image: chromadb/chroma:latest
@@ -150,3 +155,4 @@ volumes:
   chroma_data:
   linkedin_data:
   n8n_data:
+  media_data:

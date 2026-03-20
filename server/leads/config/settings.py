@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     "corsheaders",
     "rest_framework",
+    "auth_api",
     "config",  # Lead, Persona live in config.models
     "core",
     "linkedin",
@@ -103,6 +104,11 @@ LEADS_SERVICE_INTERNAL_SECRET = os.environ.get("LEADS_SERVICE_INTERNAL_SECRET", 
 # CORS: allow Next.js dev server (and any configured origin)
 CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 
+# DRF: use auth_api exception handler so auth failures are logged consistently.
+REST_FRAMEWORK = {
+    "EXCEPTION_HANDLER": "auth_api.exception_handlers.custom_exception_handler",
+}
+
 # LinkedIn (session-based; no OAuth app)
 # Optional: path to store session cookies (default: BASE_DIR/data/linkedin_session.json)
 # LINKEDIN_SESSION_PATH = os.path.join(BASE_DIR, 'data', 'linkedin_session.json')
@@ -126,6 +132,21 @@ LOGGING = {
         },
     },
     "loggers": {
+        "django.request": {
+            "level": "WARNING",
+            "handlers": ["console"],
+            "propagate": False,
+        },
+        "rest_framework": {
+            "level": "INFO",
+            "handlers": ["console"],
+            "propagate": False,
+        },
+        "auth_api": {
+            "level": "DEBUG",
+            "handlers": ["console"],
+            "propagate": False,
+        },
         "linkedin": {
             "level": "INFO",
             "handlers": ["console"],
@@ -133,3 +154,9 @@ LOGGING = {
         },
     },
 }
+
+# File uploads (profile picture + product docs).
+# In docker, we mount a shared /data volume into both the leads and outreach services,
+# so outreach can ingest product docs from the same filesystem.
+MEDIA_ROOT = os.environ.get("MEDIA_ROOT", "/data")
+MEDIA_URL = os.environ.get("MEDIA_URL", "/media/")

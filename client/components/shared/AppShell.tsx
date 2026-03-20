@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { clearTokens, getAccessToken, getRefreshToken } from "@/lib/authStorage";
+import { useMeQuery } from "@/store/authApi";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
@@ -9,7 +12,7 @@ const navItems = [
   { href: "/research", label: "Research", icon: "track_changes" },
   { href: "/outreach", label: "Outreach", icon: "send" },
   { href: "/inbox", label: "Inbox", icon: "inbox" },
-  { href: "/config", label: "Settings", icon: "settings" },
+  { href: "/settings", label: "Settings", icon: "settings" },
 ];
 
 function getHeaderFromPath(pathname: string): { title: string; breadcrumb?: { href: string; label: string } } {
@@ -21,7 +24,7 @@ function getHeaderFromPath(pathname: string): { title: string; breadcrumb?: { hr
   if (pathname === "/research") return { title: "Research" };
   if (pathname === "/outreach") return { title: "Outreach" };
   if (pathname === "/inbox") return { title: "Inbox & Replies" };
-  if (pathname === "/config") return { title: "System Configuration" };
+  if (pathname === "/settings") return { title: "Settings" };
   return { title: "SalesMind" };
 }
 
@@ -33,9 +36,75 @@ function NavIcon({ name }: { name: string }) {
   );
 }
 
+function initials(fullName: string, email: string): string {
+  const name = fullName?.trim() ?? "";
+  if (name) {
+    const parts = name.split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    if (parts[0].length >= 2) return parts[0].slice(0, 2).toUpperCase();
+    return parts[0][0].toUpperCase();
+  }
+  if (email?.length >= 2) return email.slice(0, 2).toUpperCase();
+  return "—";
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const pathname = usePathname();
   const { title, breadcrumb } = getHeaderFromPath(pathname);
+
+  const accessToken = getAccessToken();
+  const refreshToken = getRefreshToken();
+
+  const shouldSkipAuthFetch = !accessToken && !refreshToken;
+  const { data: me, error: meError, isLoading: meLoading } = useMeQuery(undefined, {
+    skip: shouldSkipAuthFetch,
+  });
+
+  const meStatus = (meError as any)?.status as number | undefined;
+
+  useEffect(() => {
+    if (shouldSkipAuthFetch) {
+      router.replace("/");
+      return;
+    }
+    if (meStatus === 401) {
+      clearTokens();
+      router.replace("/");
+    }
+  }, [meStatus, router, shouldSkipAuthFetch]);
+
+  const displayName = me?.full_name || me?.email || "User";
+  const avatarInitials = me ? initials(me.full_name ?? "", me.email ?? "") : "U";
+
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const avatarMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!avatarMenuOpen) return;
+
+    function onDocClick(e: MouseEvent) {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (avatarMenuRef.current && avatarMenuRef.current.contains(target)) return;
+      setAvatarMenuOpen(false);
+    }
+
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [avatarMenuOpen]);
+
+  const handleLogout = () => {
+    clearTokens();
+    setAvatarMenuOpen(false);
+    router.replace("/");
+  };
+
+  const showAuthGate = shouldSkipAuthFetch || meLoading;
+  const authGateBlocked = showAuthGate || meStatus === 401;
+  const avatarMenuId = useMemo(() => `avatar-menu-${Math.random().toString(16).slice(2)}`, []);
+
+  if (authGateBlocked) return null;
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -121,12 +190,40 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
             <div className="h-8 w-px bg-primary/10" />
             <div className="flex items-center gap-3">
-              <div className="text-right hidden sm:block">
-                <p className="text-xs font-bold leading-none text-slate-100">User</p>
-                <p className="text-[10px] text-primary">Sales</p>
+              <div className="text-right">
+                <p className="text-xs font-bold leading-none text-slate-100 truncate">{displayName}</p>
+                <p className="text-[10px] text-primary truncate">{me?.email ?? "Sales"}</p>
               </div>
-              <div className="size-9 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center text-primary font-bold text-sm">
-                U
+              <div className="relative">
+                <button
+                  type="button"
+                  className="size-9 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center text-primary font-bold text-sm hover:bg-primary/30 transition-colors"
+                  aria-haspopup="menu"
+                  aria-expanded={avatarMenuOpen}
+                  aria-controls={avatarMenuId}
+                  onClick={() => setAvatarMenuOpen((v) => !v)}
+                >
+                  {avatarInitials}
+                </button>
+
+                {avatarMenuOpen && (
+                  <div
+                    id={avatarMenuId}
+                    ref={avatarMenuRef}
+                    role="menu"
+                    aria-label="User menu"
+                    className="absolute right-0 mt-2 w-44 rounded-lg border border-primary/20 bg-background/95 backdrop-blur-md shadow-lg overflow-hidden"
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="w-full text-left px-3 py-2 text-sm text-slate-200 hover:bg-primary/10 transition-colors"
+                      onClick={handleLogout}
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

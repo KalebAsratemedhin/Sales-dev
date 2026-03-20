@@ -32,11 +32,13 @@ def _republish_outreach_for_existing(payload, research):
         research_summary=research.website_summary,
         pain_points=research.pain_points,
         use_cases=research.use_cases,
+        user_id=payload.get("user_id") or 0,
     )
 
 
 def run_research_from_payload(payload):
     lead_id = payload.get("lead_id")
+    user_id = payload.get("user_id") or 0
     url = (payload.get("company_website") or "").strip()
 
     if not url:
@@ -84,6 +86,7 @@ def run_research_from_payload(payload):
         research_summary=result.get("summary", ""),
         pain_points=result.get("pain_points", []),
         use_cases=result.get("use_cases", []),
+        user_id=user_id,
     )
 
     publish_lead_status_update(lead_id, "researched")

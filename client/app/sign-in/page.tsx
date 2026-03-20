@@ -3,10 +3,72 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { setTokens } from "@/lib/authStorage";
+import { useLoginMutation } from "@/store/authApi";
+import { toast } from "@/components/ui/use-toast";
+import type { ChangeEvent, FormEvent } from "react";
+
+function findFirstString(value: unknown, depth = 0): string | null {
+  if (depth > 4) return null;
+  if (typeof value === "string") return value.trim() ? value : null;
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findFirstString(item, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  if (value && typeof value === "object") {
+    for (const v of Object.values(value as Record<string, unknown>)) {
+      const found = findFirstString(v, depth + 1);
+      if (found) return found;
+    }
+  }
+
+  return null;
+}
+
+function extractBackendMessage(err: unknown): string | null {
+  const data = (err as any)?.data;
+  return (
+    findFirstString(data?.error) ??
+    findFirstString(data?.detail) ??
+    findFirstString(data?.message) ??
+    findFirstString(data) ??
+    findFirstString((err as any)?.message) ??
+    null
+  );
+}
 
 export default function SignInPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [login, { isLoading }] = useLoginMutation();
+
+  const toggleShowPassword = () => setShowPassword((p) => !p);
+  const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value);
+  const handlePasswordChange = (e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value);
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    try {
+      const tokens = await login({ email, password }).unwrap();
+      setTokens(tokens);
+      router.push("/dashboard");
+    } catch (err) {
+      // RTK Query throws a structured error; extract the backend's message where possible.
+      const backendMessage = extractBackendMessage(err) ?? "Wrong credentials";
+      toast({
+        title: backendMessage,
+        description: "Please check your email and password, then try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#120e08] text-slate-100 flex flex-col font-sans">
@@ -28,8 +90,6 @@ export default function SignInPage() {
           </div>
         </Link>
         <div className="flex items-center gap-4">
-          <span className="text-xs font-medium text-slate-500 hidden sm:block">ENCRYPTED CONNECTION</span>
-          <div className="size-2 rounded-full bg-primary animate-pulse shadow-[0_0_10px_rgba(245,163,10,0.5)]" />
         </div>
       </header>
 
@@ -45,29 +105,28 @@ export default function SignInPage() {
             </div>
             <form
               className="space-y-6"
-              onSubmit={(e) => {
-                e.preventDefault();
-                router.push("/dashboard");
-              }}
+              onSubmit={handleSubmit}
             >
               <div className="space-y-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-primary/70 ml-1">Identity UID</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-primary/70 ml-1">Email</label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <span className="material-symbols-outlined text-slate-500 group-focus-within:text-primary transition-colors text-xl">alternate_email</span>
                   </div>
                   <input
                     className="block w-full pl-11 pr-4 py-4 bg-[#221c10]/50 border border-primary/10 rounded text-slate-100 placeholder:text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all text-sm font-medium"
-                    placeholder="operator@salesmind.io"
+                    placeholder="you@salesmind.io"
                     type="email"
                     name="email"
+                    value={email}
+                    onChange={handleEmailChange}
                     required
                   />
                 </div>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between items-end px-1">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-primary/70">Access Key</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-primary/70">Password</label>
                   <Link href="#" className="text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-primary transition-colors">Recovery</Link>
                 </div>
                 <div className="relative group">
@@ -79,35 +138,36 @@ export default function SignInPage() {
                     placeholder="••••••••••••"
                     type={showPassword ? "text" : "password"}
                     name="password"
+                    value={password}
+                    onChange={handlePasswordChange}
                     required
                   />
                   <button
                     type="button"
                     className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-primary transition-colors"
-                    onClick={() => setShowPassword((p) => !p)}
+                    onClick={toggleShowPassword}
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     <span className="material-symbols-outlined text-xl">{showPassword ? "visibility_off" : "visibility"}</span>
                   </button>
                 </div>
               </div>
-              <div className="flex items-center gap-3 px-1">
-                <input
-                  className="w-4 h-4 bg-[#221c10] border-primary/20 rounded text-primary focus:ring-primary focus:ring-offset-[#221c10] transition-all"
-                  id="mfa"
-                  type="checkbox"
-                  name="mfa"
-                />
-                <label className="text-xs text-slate-400 cursor-pointer" htmlFor="mfa">Require Multi-Factor Authentication</label>
-              </div>
+              
               <button
                 type="submit"
-                className="w-full py-4 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm uppercase tracking-widest rounded-lg shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 group"
+                disabled={isLoading}
+                className="w-full py-4 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm uppercase tracking-widest rounded-lg shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 group disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 Establish Connection
                 <span className="material-symbols-outlined text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
               </button>
             </form>
+            <div className="mt-6 text-sm text-slate-500 text-center">
+              New to SalesMind?{" "}
+              <Link href="/sign-up" className="text-primary hover:underline font-bold">
+                Create an account
+              </Link>
+            </div>
             <div className="mt-10 flex items-center justify-center gap-4 opacity-40">
               <div className="h-px w-8 bg-primary/30" />
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Security Clearance Required</span>
@@ -120,7 +180,6 @@ export default function SignInPage() {
               <div className="size-1.5 rounded-full bg-primary/40" />
               <div className="size-1.5 rounded-full bg-primary/40" />
             </div>
-            <span className="text-[9px] text-slate-600 font-mono tracking-tighter uppercase">Protocol-v4.2.0-STABLE</span>
           </div>
         </div>
       </main>

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -24,6 +25,15 @@ class Lead(models.Model):
         EMAILED = "emailed", "Emailed"
         REPLIED = "replied", "Replied"
         MEETING_BOOKED = "meeting_booked", "Meeting booked"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="leads",
+        null=True,
+        blank=True,
+        db_index=True,
+    )
 
     email = models.EmailField()
     name = models.CharField(max_length=255, blank=True)

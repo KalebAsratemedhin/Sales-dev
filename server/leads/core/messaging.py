@@ -45,7 +45,15 @@ def _persona_payload(persona):
     }
 
 
-def publish_research_request(lead_id, email, name, company_name, company_website, persona=None):
+def publish_research_request(
+    lead_id,
+    email,
+    name,
+    company_name,
+    company_website,
+    persona=None,
+    user_id: int | None = None,
+):
     payload = {
         "lead_id": lead_id,
         "email": email or "",
@@ -53,6 +61,7 @@ def publish_research_request(lead_id, email, name, company_name, company_website
         "company_name": company_name or "",
         "company_website": company_website or "",
         "persona": _persona_payload(persona),
+        "user_id": user_id or 0,
     }
     conn = pika.BlockingConnection(pika.URLParameters(RABBITMQ_URL))
     try:

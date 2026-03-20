@@ -6,6 +6,27 @@ export interface OutreachConfig {
   updated_at: string;
 }
 
+export interface UserProfile {
+  full_name: string;
+  email: string;
+  profile_pic_url?: string | null;
+}
+
+export interface UserSettings {
+  linkedin_profile_url: string;
+  calendly_scheduling_url: string;
+}
+
+export interface ProductDoc {
+  id: number;
+  filename: string;
+  uploaded_at: string;
+}
+
+export interface ProductDocListResponse {
+  items: ProductDoc[];
+}
+
 export interface Lead {
   id: number;
   email: string;

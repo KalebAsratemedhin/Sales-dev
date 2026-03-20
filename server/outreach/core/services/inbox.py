@@ -20,6 +20,7 @@ class InboxService:
         raw_body = (payload.get("raw_body") or "").strip()
         from_email = (payload.get("from_email") or "").strip()
         lead_id = payload.get("lead_id")
+        user_id = payload.get("user_id") or 0
 
         if not raw_body:
             raise ExpectedError("raw_body is required")
@@ -34,6 +35,8 @@ class InboxService:
                 thread.save(update_fields=["gmail_thread_id"])
         if thread is None:
             raise ExpectedError("thread not found")
+
+        user_id = getattr(thread, "user_id", user_id) or 0
 
         lead = {
             "email": from_email or "",
@@ -63,6 +66,7 @@ class InboxService:
             new_message=new_message,
             lead=lead,
             research=research,
+            user_id=user_id,
         )
 
 

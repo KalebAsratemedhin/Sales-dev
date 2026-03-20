@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
 import { StoreProvider } from "@/components/providers/StoreProvider";
 import { ConditionalShell } from "@/components/shared/ConditionalShell";
+import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -33,6 +34,7 @@ export default function RootLayout({
         <StoreProvider>
           <ConditionalShell>{children}</ConditionalShell>
         </StoreProvider>
+        <Toaster />
       </body>
     </html>
   );
