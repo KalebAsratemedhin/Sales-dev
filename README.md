@@ -78,30 +78,3 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). The dashboard shows leads, configuration, and research/outreach status when the backend is available.
 
-### Server (backend)
-
-Backend layout and how to run it (Nginx, RabbitMQ, Celery, etc.) are described in the docs:
-
-- **`docs/01-overview-and-features.md`** — Features and logical architecture
-- **`docs/05-server-nginx-rabbitmq-walkthrough.md`** — Server layout and RabbitMQ
-- **`docs/06-docker-full-stack-walkthrough.md`** — Full stack with Docker
-
-Configure the Lead and Outreach services (DB, broker, Gmail env vars, etc.) per those guides.
-
----
-
-## Documentation
-
-| Doc | Contents |
-|-----|----------|
-| **01-overview-and-features.md** | Features, logical architecture, data flow |
-| **02-design.md** | Service boundaries, data flow, technology choices |
-| **03-implementation-plan.md** | APIs, Celery tasks, structure |
-| **13-frontend-implementation-plan.md** | Client stack, screens, phasing |
-| **05–08, 10, 12** | Server/RabbitMQ, Docker, n8n, outreach ops, roadmap |
-
----
-
-## License
-
-Private / internal use unless otherwise specified.
