@@ -14,7 +14,7 @@ ACTIVITY_LOAD_WAIT_SEC = 5
 
 
 def _profile_activity_url(profile_url: str) -> str | None:
-    if not profile_url or "/in/" not in profile_url:
+    if not profile_url:
         return None
     return profile_url.rstrip("/") + "/details/activity/"
 

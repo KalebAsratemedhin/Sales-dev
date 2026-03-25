@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useGetLeadsQuery } from "@/store/leadsApi";
 import { LeadTable } from "@/components/features/LeadTable";
-import { LinkedInImport } from "@/components/features/LinkedInImport";
+import { LinkedInSyncRange } from "@/components/features/LinkedInSyncRange";
 import { ScrollArea } from "@/components/ui/ScrollArea";
 import { leadsToCsv, downloadCsv } from "@/lib/csv";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -117,7 +117,7 @@ function LeadsContent() {
         </div>
 
         <div className="mb-8">
-          <LinkedInImport />
+          <LinkedInSyncRange />
         </div>
 
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">

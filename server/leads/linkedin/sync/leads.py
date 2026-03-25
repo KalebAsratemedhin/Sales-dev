@@ -56,6 +56,7 @@ def _sync_leads_for_one_post(
     post_input: str,
     *,
     persona_id: int | None = None,
+    user_id: int | None = None,
     profile_visit_delay_sec: float = DEFAULT_PROFILE_VISIT_DELAY_SEC,
 ) -> tuple[int, int]:
     logger.info("Loading post and scraping engagement: %r", post_input)
@@ -83,6 +84,7 @@ def _sync_leads_for_one_post(
             lead, was_created = Lead.objects.get_or_create(
                 profile_url=profile_url,
                 source=Lead.Source.LINKEDIN,
+                user_id=user_id,
                 defaults=_lead_defaults(
                     profile_url, name, scraped_email, scraped_website, persona_id
                 ),
@@ -117,6 +119,7 @@ def sync_leads_from_post(
     post_input: str,
     *,
     persona_id: int | None = None,
+    user_id: int | None = None,
     headless: bool = True,
     profile_visit_delay_sec: float = DEFAULT_PROFILE_VISIT_DELAY_SEC,
 ) -> tuple[int, int]:
@@ -129,7 +132,11 @@ def sync_leads_from_post(
         if not prepare_driver_for_linkedin(driver):
             raise RuntimeError(SESSION_REQUIRED_MSG)
         created, updated = _sync_leads_for_one_post(
-            driver, post_input, persona_id=persona_id, profile_visit_delay_sec=profile_visit_delay_sec
+            driver,
+            post_input,
+            persona_id=persona_id,
+            user_id=user_id,
+            profile_visit_delay_sec=profile_visit_delay_sec,
         )
     except RuntimeError:
         raise
@@ -151,6 +158,7 @@ def sync_leads_from_profile(
     end_date: date,
     *,
     persona_id: int | None = None,
+    user_id: int | None = None,
     headless: bool = True,
     profile_visit_delay_sec: float = DEFAULT_PROFILE_VISIT_DELAY_SEC,
     max_activity_scrolls: int = 10,
@@ -174,7 +182,11 @@ def sync_leads_from_profile(
         for j, post_input in enumerate(post_urls, 1):
             logger.info("Syncing post %d/%d: %s", j, len(post_urls), post_input)
             c, u = _sync_leads_for_one_post(
-                driver, post_input, persona_id=persona_id, profile_visit_delay_sec=profile_visit_delay_sec
+                driver,
+                post_input,
+                persona_id=persona_id,
+                user_id=user_id,
+                profile_visit_delay_sec=profile_visit_delay_sec,
             )
             total_created += c
             total_updated += u
@@ -196,11 +208,12 @@ def sync_leads_from_posts(
     post_inputs: list[str],
     *,
     persona_id: int | None = None,
+    user_id: int | None = None,
 ) -> tuple[int, int]:
     total_created, total_updated = 0, 0
     for post_input in post_inputs:
         try:
-            c, u = sync_leads_from_post(post_input, persona_id=persona_id)
+            c, u = sync_leads_from_post(post_input, persona_id=persona_id, user_id=user_id)
             total_created += c
             total_updated += u
         except Exception as e:

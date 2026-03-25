@@ -7,6 +7,17 @@ const base = getApiBase();
 const baseUrl = base ? `${base}/api/linkedin` : "/api/linkedin";
 
 export type LinkedInSyncCounts = { created: number; updated: number };
+export type LinkedInSyncJobStartResponse = { job_id: number };
+export type LinkedInSyncJob = {
+  id: number;
+  status: "queued" | "running" | "succeeded" | "failed";
+  created: number;
+  updated: number;
+  error: string;
+  start_date: string;
+  end_date: string;
+  updated_at: string;
+};
 
 export const linkedinApi = createApi({
   reducerPath: "linkedinApi",
@@ -54,7 +65,30 @@ export const linkedinApi = createApi({
         }
       },
     }),
+
+    startProfileSyncJob: builder.mutation<
+      LinkedInSyncJobStartResponse,
+      { start_date: string; end_date: string; max_scrolls?: number }
+    >({
+      query: (body) => ({
+        url: "/sync/profile/async/",
+        method: "POST",
+        body,
+      }),
+    }),
+
+    getSyncJob: builder.query<LinkedInSyncJob, number>({
+      query: (jobId) => ({
+        url: `/sync/jobs/${jobId}/`,
+        method: "GET",
+      }),
+    }),
   }),
 });
 
-export const { useSyncFromPostsMutation, useSyncFromProfileMutation } = linkedinApi;
+export const {
+  useSyncFromPostsMutation,
+  useSyncFromProfileMutation,
+  useStartProfileSyncJobMutation,
+  useLazyGetSyncJobQuery,
+} = linkedinApi;

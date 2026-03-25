@@ -29,6 +29,7 @@ class OutreachSettings(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="outreach_settings")
     linkedin_profile_url = models.CharField(max_length=512, blank=True)
     calendly_scheduling_url = models.CharField(max_length=512, blank=True)
+    linkedin_last_sync = models.DateField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self) -> str:

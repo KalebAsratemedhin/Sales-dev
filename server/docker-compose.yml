@@ -61,6 +61,8 @@ services:
       LEADS_SERVICE_INTERNAL_SECRET: ${LEADS_SERVICE_INTERNAL_SECRET:-dev-internal-secret}
       SECRET_KEY: ${SECRET_KEY:-change-me-leads}
       DEBUG: "false"
+      LINKEDIN_EMAIL: ${LINKEDIN_EMAIL}
+      LINKEDIN_PASSWORD: ${LINKEDIN_PASSWORD}
     volumes:
       - linkedin_data:/app/data
       - media_data:/data
@@ -146,7 +148,6 @@ services:
       - leads
       - research
       - outreach
-    restart: unless-stopped
 volumes:
   postgres_leads_data:
   postgres_research_data:

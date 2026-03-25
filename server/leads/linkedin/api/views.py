@@ -25,6 +25,7 @@ def sync_from_posts(request):
         created, updated = sync_leads_from_posts(
             data["post_urls"],
             persona_id=data.get("persona_id"),
+            user_id=getattr(getattr(request, "user", None), "id", None),
         )
         return Response({"created": created, "updated": updated}, status=status.HTTP_200_OK)
     except RuntimeError as e:
@@ -51,6 +52,7 @@ def sync_from_profile(request):
             data["start_date"],
             data["end_date"],
             persona_id=data.get("persona_id"),
+            user_id=getattr(getattr(request, "user", None), "id", None),
             max_activity_scrolls=data.get("max_scrolls", 10),
         )
         return Response({"created": created, "updated": updated}, status=status.HTTP_200_OK)

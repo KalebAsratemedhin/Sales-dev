@@ -227,6 +227,15 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div>
+                  <Label htmlFor="linkedinLastSync">LinkedIn last sync</Label>
+                  <Input
+                    id="linkedinLastSync"
+                    value={settings?.linkedin_last_sync ? settings.linkedin_last_sync : "Never"}
+                    disabled
+                    className="cursor-not-allowed opacity-80"
+                  />
+                </div>
+                <div>
                   <Label htmlFor="calendlySchedulingUrl">Calendly scheduling URL</Label>
                   <Input
                     id="calendlySchedulingUrl"

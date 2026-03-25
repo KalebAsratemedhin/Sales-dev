@@ -15,6 +15,7 @@ export interface UserProfile {
 export interface UserSettings {
   linkedin_profile_url: string;
   calendly_scheduling_url: string;
+  linkedin_last_sync?: string | null;
 }
 
 export interface ProductDoc {
