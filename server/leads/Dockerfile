@@ -8,7 +8,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # Chromium for LinkedIn session refresh (Selenium/undetected-chromedriver)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-    chromium \
+    chromium=146.* \
     libnss3 \
     libgbm1 \
     libasound2 \
