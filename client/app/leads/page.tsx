@@ -16,7 +16,8 @@ const STATUS_FILTERS = [
   { value: "researched", label: "Warm", icon: "wb_sunny" },
   { value: "emailed", label: "Contacted", icon: null },
   { value: "replied", label: "Hot", icon: "local_fire_department" },
-  { value: "meeting_booked", label: "Follow-up Required", countLabel: true },
+  { value: "meeting_booked", label: "Meeting", icon: "event" },
+  { value: "follow_up_required", label: "Follow-up required", countLabel: true },
 ] as const;
 
 const VALID_STATUS = new Set<string>(

@@ -2,23 +2,17 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 import dj_database_url
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+from datetime import timedelta
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-r-&_r*z&y9^o-_o6t&-do917$y6@3(y9%%d^hvhj_j8&ca3vi9'
 
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 
-# Application definition
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -30,7 +24,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "auth_api",
-    "config",  # Lead, Persona live in config.models
+    "config",
     "core",
     "linkedin",
 ]
@@ -101,21 +95,12 @@ STATIC_URL = 'static/'
 
 LEADS_SERVICE_INTERNAL_SECRET = os.environ.get("LEADS_SERVICE_INTERNAL_SECRET", "")
 
-# CORS: allow Next.js dev server (and any configured origin)
 CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 
-# DRF: use auth_api exception handler so auth failures are logged consistently.
 REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "auth_api.exception_handlers.custom_exception_handler",
 }
 
-# LinkedIn (session-based; no OAuth app)
-# Optional: path to store session cookies (default: BASE_DIR/data/linkedin_session.json)
-# LINKEDIN_SESSION_PATH = os.path.join(BASE_DIR, 'data', 'linkedin_session.json')
-# Credentials for refresh_session (set in env): LINKEDIN_EMAIL, LINKEDIN_PASSWORD
-# LINKEDIN_HEADLESS = True  # set False to see browser during refresh
-
-# Logging: show sync/scrape progress (what is obtained, processed, succeeded/failed)
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -155,8 +140,12 @@ LOGGING = {
     },
 }
 
-# File uploads (profile picture + product docs).
-# In docker, we mount a shared /data volume into both the leads and outreach services,
-# so outreach can ingest product docs from the same filesystem.
 MEDIA_ROOT = os.environ.get("MEDIA_ROOT", "/data")
 MEDIA_URL = os.environ.get("MEDIA_URL", "/media/")
+LINKEDIN_MAX_SCROLLS_DEFAULT = int(os.environ.get("LINKEDIN_MAX_SCROLLS_DEFAULT", "10"))
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=180),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+}

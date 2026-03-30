@@ -80,13 +80,7 @@ export function LeadTable({
       <table className="w-full text-left border-collapse">
         <thead className="bg-primary/5 border-b border-primary/10 text-[11px] uppercase tracking-wider font-bold text-slate-500">
           <tr>
-            <th className="px-6 py-4 w-10">
-              <input
-                type="checkbox"
-                className="rounded border-primary/30 bg-transparent text-primary focus:ring-primary size-4"
-                aria-label="Select all"
-              />
-            </th>
+            
             <th className="px-6 py-4">Lead Name</th>
             <th className="px-6 py-4">Status</th>
             <th className="px-6 py-4">Score</th>
@@ -100,13 +94,7 @@ export function LeadTable({
             const score = scoreFromLead(lead);
             return (
               <tr key={lead.id} className="hover:bg-primary/5 transition-colors group">
-                <td className="px-6 py-4">
-                  <input
-                    type="checkbox"
-                    className="rounded border-primary/30 bg-transparent text-primary focus:ring-primary size-4"
-                    aria-label={`Select ${lead.email}`}
-                  />
-                </td>
+                
                 <td className="px-6 py-4">
                   <Link
                     href={`/leads/${lead.id}`}

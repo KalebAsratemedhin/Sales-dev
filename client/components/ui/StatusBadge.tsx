@@ -6,6 +6,7 @@ const statusStyles: Record<string, string> = {
   emailed: "bg-primary/10 text-primary border-primary/20",
   replied: "bg-red-400/10 text-red-400 border-red-400/20",
   meeting_booked: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
+  follow_up_required: "bg-amber-400/10 text-amber-400 border-amber-400/20",
 };
 
 const statusLabels: Record<string, string> = {
@@ -14,6 +15,7 @@ const statusLabels: Record<string, string> = {
   emailed: "Contacted",
   replied: "Hot",
   meeting_booked: "Meeting",
+  follow_up_required: "Follow-up required",
 };
 
 export function StatusBadge({

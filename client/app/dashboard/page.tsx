@@ -10,6 +10,7 @@ const STATUS_LABELS: Record<string, string> = {
   emailed: "Emailed",
   replied: "Replied",
   meeting_booked: "Meeting booked",
+  follow_up_required: "Follow-up required",
 };
 
 export default function DashboardPage() {

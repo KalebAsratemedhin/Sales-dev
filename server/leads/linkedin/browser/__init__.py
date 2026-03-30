@@ -1,5 +1,6 @@
 from linkedin.browser.driver import create_driver
 from linkedin.browser.engagement import (
+    PostEngagementScrape,
     get_engagement_profile_urls_via_browser,
     load_post_and_get_engagement_urls,
     prepare_driver_for_linkedin,
@@ -18,6 +19,7 @@ def get_engagement_for_post(post_input: str, *, headless: bool = True) -> list[s
 __all__ = [
     "create_driver",
     "prepare_driver_for_linkedin",
+    "PostEngagementScrape",
     "load_post_and_get_engagement_urls",
     "get_engagement_profile_urls_via_browser",
     "get_engagement_for_post",

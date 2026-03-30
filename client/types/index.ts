@@ -38,6 +38,7 @@ export interface Lead {
   profile_url: string;
   persona: number | null;
   status: string;
+  linkedin_comment_count: number;
   created_at: string;
   updated_at: string;
 }

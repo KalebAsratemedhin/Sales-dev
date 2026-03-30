@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from rest_framework import serializers
+from django.conf import settings
 
 
 class SyncFromPostsSerializer(serializers.Serializer):
@@ -22,7 +23,7 @@ class SyncFromProfileSerializer(serializers.Serializer):
     start_date = serializers.CharField(allow_blank=False)
     end_date = serializers.CharField(allow_blank=False)
     persona_id = serializers.IntegerField(required=False, allow_null=True)
-    max_scrolls = serializers.IntegerField(required=False, default=10, min_value=1, max_value=100)
+    max_scrolls = serializers.IntegerField(required=False, default=settings.LINKEDIN_MAX_SCROLLS_DEFAULT, min_value=1, max_value=100)
 
     def validate_profile_url(self, value):
         if "/in/" not in (value or ""):

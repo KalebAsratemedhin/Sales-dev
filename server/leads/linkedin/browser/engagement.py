@@ -1,6 +1,7 @@
 import logging
 import re
 import time
+from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse
 
 from selenium.webdriver.common.by import By
@@ -11,6 +12,15 @@ from linkedin.core.session import load_cookies
 from linkedin.browser.driver import create_driver
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class PostEngagementScrape:
+    """Result of loading a post and scraping engager profile URLs."""
+
+    post_url: str
+    all_profile_urls: list[str]
+    comment_profile_urls: list[str]
 
 
 def _post_url_from_input(post_input: str) -> str | None:
@@ -64,18 +74,18 @@ def load_post_and_get_engagement_urls(
     *,
     page_load_wait_sec: float = 5.0,
     scroll_pause_sec: float = 1.0,
-) -> list[str]:
+) -> PostEngagementScrape:
     post_url = _post_url_from_input(post_input)
     if not post_url:
         logger.warning("Could not resolve post URL from input: %r", post_input)
-        return []
+        return PostEngagementScrape(post_url="", all_profile_urls=[], comment_profile_urls=[])
     logger.info("Loading post: %s", post_url)
     try:
         driver.get(post_url)
         time.sleep(page_load_wait_sec)
     except Exception as e:
         logger.warning("Post page load failed: %s", e)
-        return []
+        return PostEngagementScrape(post_url=post_url, all_profile_urls=[], comment_profile_urls=[])
     try:
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         time.sleep(scroll_pause_sec)
@@ -84,12 +94,20 @@ def load_post_and_get_engagement_urls(
     except Exception as e:
         logger.debug("Scroll failed: %s", e)
     try:
-        urls = _scrape_profile_urls_from_page(driver)
+        all_urls, comment_urls = _scrape_post_engagement_lists(driver)
     except Exception as e:
         logger.warning("Scrape engagement URLs failed: %s", e)
-        return []
-    logger.info("Scraped %d engagement profile URL(s) from post page", len(urls))
-    return urls
+        return PostEngagementScrape(post_url=post_url, all_profile_urls=[], comment_profile_urls=[])
+    logger.info(
+        "Scraped %d engagement profile URL(s) (%d from comments) from post page",
+        len(all_urls),
+        len(comment_urls),
+    )
+    return PostEngagementScrape(
+        post_url=post_url,
+        all_profile_urls=all_urls,
+        comment_profile_urls=comment_urls,
+    )
 
 
 def _normalize_profile_url(href: str) -> str | None:
@@ -144,9 +162,16 @@ def _get_post_author_url(driver) -> str | None:
     return None
 
 
-def _get_engagement_containers(driver) -> list:
+def _get_comment_containers(driver) -> list:
     containers = []
-    for sel in [".feed-shared-comments__list", ".comments-comments-list", "[data-control-name='comments_section']", "section.comments-section", "div[class*='comments']", ".feed-shared-comments"]:
+    for sel in [
+        ".feed-shared-comments__list",
+        ".comments-comments-list",
+        "[data-control-name='comments_section']",
+        "section.comments-section",
+        "div[class*='comments']",
+        ".feed-shared-comments",
+    ]:
         try:
             els = driver.find_elements(By.CSS_SELECTOR, sel)
             for el in els[:3]:
@@ -157,45 +182,80 @@ def _get_engagement_containers(driver) -> list:
         except Exception as e:
             logger.debug("Comment selector %r failed: %s", sel, e)
             continue
-    for sel in [".social-details-reactors", "[data-control-name='reaction']", "div[class*='reactors']", "div[class*='reaction']", ".social-details-social-counts__reactions"]:
+    return containers
+
+
+def _get_reaction_containers(driver) -> list:
+    containers = []
+    for sel in [
+        ".social-details-reactors",
+        "[data-control-name='reaction']",
+        "div[class*='reactors']",
+        "div[class*='reaction']",
+        ".social-details-social-counts__reactions",
+    ]:
         try:
             els = driver.find_elements(By.CSS_SELECTOR, sel)
             for el in els[:3]:
                 if el not in containers:
                     containers.append(el)
+            if containers:
+                break
         except Exception as e:
             logger.debug("Reaction selector %r failed: %s", sel, e)
             continue
     return containers
 
 
-def _scrape_profile_urls_from_page(driver) -> list[str]:
-    exclude = set()
-    author_url = _get_post_author_url(driver)
-    if author_url:
-        exclude.add(author_url)
-    engagement_containers = _get_engagement_containers(driver)
-    if not engagement_containers:
-        try:
-            for sel in ["main", "[role='main']", ".scaffold-layout__main", ".feed-shared-update-v2"]:
-                mains = driver.find_elements(By.CSS_SELECTOR, sel)
-                for main in mains[:2]:
-                    urls = _get_profile_urls_from_element(main, exclude)
-                    if urls:
-                        if author_url and urls and urls[0] == author_url:
-                            return list(dict.fromkeys(urls[1:]))
-                        return list(dict.fromkeys(urls))
-        except Exception as e:
-            logger.debug("Fallback main scrape failed: %s", e)
-        return []
-    seen = set()
-    out = []
-    for container in engagement_containers:
+def _urls_from_containers(containers: list, exclude: set[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for container in containers:
         for url in _get_profile_urls_from_element(container, exclude):
             if url not in seen:
                 seen.add(url)
                 out.append(url)
     return out
+
+
+def _dedupe_preserve_order(*url_lists: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for lst in url_lists:
+        for url in lst:
+            if url not in seen:
+                seen.add(url)
+                out.append(url)
+    return out
+
+
+def _scrape_post_engagement_lists(driver) -> tuple[list[str], list[str]]:
+    """Returns (all_profile_urls, comment_profile_urls)."""
+    exclude: set[str] = set()
+    author_url = _get_post_author_url(driver)
+    if author_url:
+        exclude.add(author_url)
+    comment_containers = _get_comment_containers(driver)
+    reaction_containers = _get_reaction_containers(driver)
+    comment_urls = _urls_from_containers(comment_containers, exclude)
+    reaction_urls = _urls_from_containers(reaction_containers, exclude)
+    if comment_urls or reaction_urls:
+        all_urls = _dedupe_preserve_order(comment_urls, reaction_urls)
+        return all_urls, comment_urls
+    try:
+        for sel in ["main", "[role='main']", ".scaffold-layout__main", ".feed-shared-update-v2"]:
+            mains = driver.find_elements(By.CSS_SELECTOR, sel)
+            for main in mains[:2]:
+                urls = _get_profile_urls_from_element(main, exclude)
+                if urls:
+                    if author_url and urls and urls[0] == author_url:
+                        merged = list(dict.fromkeys(urls[1:]))
+                    else:
+                        merged = list(dict.fromkeys(urls))
+                    return merged, []
+    except Exception as e:
+        logger.debug("Fallback main scrape failed: %s", e)
+    return [], []
 
 
 def get_engagement_profile_urls_via_browser(
@@ -212,11 +272,12 @@ def get_engagement_profile_urls_via_browser(
         if not prepare_driver_for_linkedin(driver):
             logger.warning("prepare_driver_for_linkedin returned False")
             return []
-        return load_post_and_get_engagement_urls(
+        scrape = load_post_and_get_engagement_urls(
             driver,
             post_input,
             page_load_wait_sec=page_load_wait_sec,
             scroll_pause_sec=scroll_pause_sec,
         )
+        return scrape.all_profile_urls
     finally:
         driver.quit()
