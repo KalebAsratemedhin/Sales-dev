@@ -26,7 +26,6 @@ INSTALLED_APPS = [
     "auth_api",
     "config",
     "core",
-    "linkedin",
 ]
 
 MIDDLEWARE = [

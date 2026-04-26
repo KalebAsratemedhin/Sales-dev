@@ -8,6 +8,8 @@ from core.models import Lead
 from core.permissions import InternalSecretOrAuthenticated
 from core.serializers import LeadSerializer
 from core.messaging import publish_research_request
+from core.services.linkedin_csv_import_service import LinkedInConnectionsCsvImportService
+from core.services.linkedin_lead_sync_service import LinkedInLeadSyncService
 
 
 class LeadViewSet(viewsets.ModelViewSet):
@@ -65,3 +67,75 @@ class LeadViewSet(viewsets.ModelViewSet):
         if persona_id:
             qs = qs.filter(persona_id=persona_id)
         return qs
+
+    @action(detail=False, methods=["post"], url_path="import/linkedin-connections")
+    def import_linkedin_connections_csv(self, request):
+        upload = request.FILES.get("file")
+        if not upload:
+            return Response({"error": "Missing file field 'file'."}, status=status.HTTP_400_BAD_REQUEST)
+
+        raw = upload.read()
+        svc = LinkedInConnectionsCsvImportService()
+        result = svc.import_file(
+            user_id=getattr(getattr(request, "user", None), "id", None),
+            file_bytes=raw,
+        )
+        return Response(
+            {
+                "created": result.created,
+                "updated": result.updated,
+                "skipped": result.skipped,
+                "errors": result.errors,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=["get"], url_path="linkedin/lead-sync/auth-url")
+    def linkedin_lead_sync_auth_url(self, request):
+        svc = LinkedInLeadSyncService()
+        payload = svc.build_authorize_url(user_id=request.user.id)
+        return Response(payload, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["post"], url_path="linkedin/lead-sync/exchange")
+    def linkedin_lead_sync_exchange(self, request):
+        code = (request.data or {}).get("code")
+        svc = LinkedInLeadSyncService()
+        conn = svc.connect(user_id=request.user.id, code=code)
+        return Response(
+            {
+                "connected": bool(conn.access_token),
+                "scope": conn.scope,
+                "expires_at": conn.expires_at,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=["post"], url_path="linkedin/lead-sync/pull")
+    def linkedin_lead_sync_pull(self, request):
+        body = request.data or {}
+        organization_urn = (body.get("organization_urn") or "").strip()
+        sponsored_account_urn = (body.get("sponsored_account_urn") or "").strip()
+        owner = {}
+        if organization_urn:
+            owner["organization"] = organization_urn
+        if sponsored_account_urn:
+            owner["sponsoredAccount"] = sponsored_account_urn
+        if not owner:
+            return Response(
+                {"error": "Provide organization_urn or sponsored_account_urn."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        start = int(body.get("start") or 0)
+        count = int(body.get("count") or 50)
+        svc = LinkedInLeadSyncService()
+        result = svc.pull_and_import(user_id=request.user.id, owner=owner, start=start, count=count)
+        return Response(
+            {
+                "imported": result.imported,
+                "skipped": result.skipped,
+                "errors": result.errors,
+                "next_start": result.next_start,
+            },
+            status=status.HTTP_200_OK,
+        )

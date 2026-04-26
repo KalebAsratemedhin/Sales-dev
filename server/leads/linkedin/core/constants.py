@@ -1,9 +1,0 @@
-LINKEDIN_API_BASE = "https://api.linkedin.com/rest"
-LINKEDIN_VERSION = "202406"
-RESTLI_PROTOCOL_VERSION = "2.0.0"
-LINKEDIN_LOGIN_URL = "https://www.linkedin.com/uas/login"
-LINKEDIN_LOGIN_SUBMIT_URL = "https://www.linkedin.com/uas/login-submit"
-LINKEDIN_SESSION_COOKIE_NAMES = ("li_at", "JSESSIONID")
-LINKEDIN_ORIGIN = "https://www.linkedin.com"
-FEED_UPDATE_TEMPLATE = "https://www.linkedin.com/feed/update/urn:li:activity:{activity_id}/"
-SESSION_REQUIRED_MSG = "No LinkedIn session. Run: python manage.py linkedin_refresh_session"

@@ -74,3 +74,47 @@ class LinkedInSyncedPost(models.Model):
 
     def __str__(self):
         return self.post_url[:80]
+
+
+class LinkedInLeadSyncConnection(models.Model):
+    """
+    Stores an OAuth connection for LinkedIn Marketing / Lead Sync API (Lead Gen Forms).
+    """
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="linkedin_lead_sync_connection",
+    )
+
+    access_token = models.TextField(blank=True, default="")
+    refresh_token = models.TextField(blank=True, default="")
+    expires_at = models.DateTimeField(null=True, blank=True)
+    scope = models.TextField(blank=True, default="")
+    token_type = models.CharField(max_length=32, blank=True, default="Bearer")
+
+    # Which owner this connection is used for (optional but recommended).
+    organization_urn = models.CharField(max_length=128, blank=True, default="")
+    sponsored_account_urn = models.CharField(max_length=128, blank=True, default="")
+
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"LinkedInLeadSyncConnection user_id={self.user_id}"
+
+
+class LinkedInLeadGenResponseCursor(models.Model):
+    """
+    Dedup cursor for imported lead form responses.
+    """
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="linkedin_leadgen_responses")
+    response_urn = models.CharField(max_length=255, unique=True, db_index=True)
+    received_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-received_at"]
+
+    def __str__(self) -> str:
+        return f"LinkedInLeadGenResponseCursor user_id={self.user_id} response={self.response_urn[:60]}"

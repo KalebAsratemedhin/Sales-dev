@@ -3,8 +3,6 @@ import os
 import pika
 
 from core.models import Lead
-from linkedin.jobs.messaging import QUEUE_LINKEDIN_SYNC_PROFILE
-from linkedin.jobs.worker import handle_linkedin_sync_profile_message
 
 RABBITMQ_URL = os.environ.get("RABBITMQ_URL")
 QUEUE_LEAD_STATUS_UPDATE = "lead.status.update"
@@ -24,7 +22,6 @@ def run_consumer():
     conn = pika.BlockingConnection(pika.URLParameters(RABBITMQ_URL))
     ch = conn.channel()
     ch.queue_declare(queue=QUEUE_LEAD_STATUS_UPDATE, durable=True)
-    ch.queue_declare(queue=QUEUE_LINKEDIN_SYNC_PROFILE, durable=True)
 
     def on_message(ch, method, properties, body):
         try:
@@ -34,16 +31,7 @@ def run_consumer():
             pass
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
-    def on_linkedin_sync_profile(ch, method, properties, body):
-        try:
-            payload = json.loads(body)
-            handle_linkedin_sync_profile_message(payload)
-        except (json.JSONDecodeError, TypeError):
-            pass
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-
     ch.basic_consume(queue=QUEUE_LEAD_STATUS_UPDATE, on_message_callback=on_message)
-    ch.basic_consume(queue=QUEUE_LINKEDIN_SYNC_PROFILE, on_message_callback=on_linkedin_sync_profile)
     ch.start_consuming()
 
 
