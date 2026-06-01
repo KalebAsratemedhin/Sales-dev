@@ -6,3 +6,6 @@ client/node_modules/
 client/.next/
 docs/
 stitch_salesmind_prd/
+
+
+**/.venv

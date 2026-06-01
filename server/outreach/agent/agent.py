@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from core.exceptions import TransientError
 from .prompts import (
+    FOLLOWUP_EMAIL_PROMPT,
     INBOX_REPLY_PROMPT,
     OUTREACH_EMAIL_PROMPT,
     build_list_block,
@@ -63,6 +64,45 @@ def draft_outreach_email(lead: dict, research: dict, persona: dict | None = None
                 "pain_points_block": pain_points_block,
                 "use_cases_block": use_cases_block,
                 "persona_block": persona_block,
+            }
+        )
+    except Exception as e:
+        raise TransientError(str(e)) from e
+
+    return {
+        "subject": result.subject,
+        "body": result.body,
+    }
+
+
+def draft_followup_email(lead: dict, research: dict, thread_messages: list[dict]) -> dict:
+    llm = get_llm()
+    structured_llm = llm.with_structured_output(OutreachDraft)
+
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("human", FOLLOWUP_EMAIL_PROMPT),
+        ]
+    )
+
+    chain = prompt | structured_llm
+
+    pain_points_block = build_list_block(research.get("pain_points") or [], "pain points")
+    if thread_messages:
+        thread_messages_block = "\n".join(
+            f"{msg.get('author') or 'Unknown'}: {msg.get('body') or ''}" for msg in thread_messages
+        )
+    else:
+        thread_messages_block = "(no previous messages)"
+
+    try:
+        result = chain.invoke(
+            {
+                "lead_name": lead.get("name") or "",
+                "company_name": lead.get("company_name") or "",
+                "research_summary": research.get("website_summary") or research.get("research_summary") or "",
+                "pain_points_block": pain_points_block,
+                "thread_messages_block": thread_messages_block,
             }
         )
     except Exception as e:

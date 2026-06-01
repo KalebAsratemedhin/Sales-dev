@@ -9,26 +9,6 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name="Persona",
-            fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("name", models.CharField(max_length=255)),
-                ("is_active", models.BooleanField(default=True)),
-            ],
-        ),
-        migrations.CreateModel(
-            name="Lead",
-            fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("email", models.EmailField(max_length=254)),
-                ("name", models.CharField(blank=True, max_length=255)),
-                ("company_name", models.CharField(blank=True, max_length=255)),
-                ("status", models.CharField(default="new", max_length=64)),
-                ("source", models.CharField(blank=True, max_length=64)),
-                ("created_at", models.DateTimeField(auto_now_add=True)),
-            ],
-        ),
-        migrations.CreateModel(
             name="EmailThread",
             fields=[
                 ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
@@ -57,7 +37,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=models.deletion.CASCADE,
                         related_name="emails",
-                        to="core.EmailThread",
+                        to="outreach.EmailThread",
                     ),
                 ),
             ],

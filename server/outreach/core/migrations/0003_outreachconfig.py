@@ -4,7 +4,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("core", "0002_emailthread_research_fields"),
+        ("outreach", "0002_emailthread_research_fields"),
     ]
 
     operations = [

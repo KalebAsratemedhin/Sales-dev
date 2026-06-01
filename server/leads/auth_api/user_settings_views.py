@@ -195,7 +195,7 @@ class ProductDocsView(APIView):
             )
 
         internal_secret = os.environ.get("LEADS_SERVICE_INTERNAL_SECRET") or ""
-        outreach_base_url = os.environ.get("OUTREACH_SERVICE_URL") or "http://outreach:8000"
+        outreach_base_url = os.environ.get("OUTREACH_SERVICE_URL") or "http://outreach:8003"
         if internal_secret:
             try:
                 r = requests.post(

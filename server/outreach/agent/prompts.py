@@ -29,6 +29,34 @@ Return only the subject line and body, no extra commentary.
 """
 
 
+FOLLOWUP_EMAIL_PROMPT = """You are an SDR writing a short, polite follow-up to a cold email that received no reply.
+
+Lead:
+- Name: {lead_name}
+- Company: {company_name}
+
+Research summary about the company:
+---
+{research_summary}
+---
+
+Pain points (bullet list):
+{pain_points_block}
+
+Previous thread (most recent last):
+---
+{thread_messages_block}
+---
+
+Write a brief follow-up that:
+- Gently bumps the previous email without guilt-tripping ("just following up", not "you didn't reply").
+- Adds one new angle or a single sharpest pain point rather than repeating the first email.
+- Stays under 90 words and ends with a low-friction call-to-action.
+
+Return a subject line (prefer "Re: ..." continuing the thread) and the body, no extra commentary.
+"""
+
+
 def build_persona_block(persona):
     if not persona:
         return "Persona: general B2B decision-maker."

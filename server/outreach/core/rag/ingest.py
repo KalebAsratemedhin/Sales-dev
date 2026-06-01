@@ -25,12 +25,14 @@ def ingest_from_path(base_path: str, collection_name: str = "product_docs") -> i
     if not base.exists():
         return 0
     client = get_chroma_client()
+
     if client is None:
         return 0
     try:
         client.delete_collection(name=collection_name)
     except Exception:
         pass
+    
     coll = client.get_or_create_collection(
         name=collection_name,
         metadata={"description": "Product docs"},

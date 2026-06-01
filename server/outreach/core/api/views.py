@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+from django.conf import settings
 from rest_framework import status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
@@ -10,6 +11,8 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from core.models import OutreachConfig
 from core.rag import ingest_from_path
 from core.permissions import InternalSecretOrAuthenticated
+from core.services.followup import find_due_thread_ids
+from core.tasks import send_followup
 
 
 def _config_to_dict(config):
@@ -59,3 +62,23 @@ def ingest_docs(request):
     collection = f"product_docs_{uid}"
     n = ingest_from_path(str(base_dir), collection_name=collection)
     return Response({"ingested": n, "collection": collection, "docs_dir": str(base_dir)})
+
+
+@api_view(["POST"])
+@authentication_classes([JWTAuthentication])
+@permission_classes([InternalSecretOrAuthenticated])
+def run_followups(request):
+    """Find threads due for a single day-N follow-up and dispatch a task per thread.
+    Intended to be called on a schedule by n8n with the X-Internal-Secret header."""
+    raw_days = request.data.get("days") if request.data else None
+    default_days = getattr(settings, "FOLLOWUP_DAYS", 3)
+    try:
+        days = int(raw_days) if raw_days is not None else default_days
+    except (TypeError, ValueError):
+        days = default_days
+
+    thread_ids = find_due_thread_ids(days)
+    for thread_id in thread_ids:
+        send_followup.delay(thread_id)
+
+    return Response({"dispatched": len(thread_ids), "days": days, "thread_ids": thread_ids})

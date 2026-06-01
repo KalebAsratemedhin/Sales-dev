@@ -3,7 +3,6 @@ djangorestframework
 dj-database-url
 psycopg2-binary
 python-dotenv
-pika
 langchain
 langchain-google-genai
 langchain-core
@@ -12,3 +11,4 @@ gunicorn
 trafilatura
 requests
 redis
+celery

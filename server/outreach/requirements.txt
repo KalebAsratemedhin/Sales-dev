@@ -3,7 +3,6 @@ django-cors-headers
 dj-database-url
 psycopg2-binary
 python-dotenv
-pika
 djangorestframework
 langchain
 langchain-google-genai
@@ -14,3 +13,4 @@ gunicorn
 requests
 redis
 djangorestframework-simplejwt
+celery

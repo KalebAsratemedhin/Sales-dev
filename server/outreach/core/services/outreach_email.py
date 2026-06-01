@@ -10,6 +10,16 @@ from core.models import EmailThread, SentEmail
 from core.rate_limit import rate_limit_gmail, rate_limit_llm_outreach
 
 
+def send_email(to_email: str, subject: str, body: str) -> tuple[str, str]:
+    """Send via Gmail SMTP when credentials are present, else return a stub id."""
+    sender = (os.environ.get("GMAIL_SENDER") or "").strip()
+    password = (os.environ.get("GMAIL_PASSWORD") or "").strip()
+    if sender and password:
+        rate_limit_gmail()
+        return send_via_smtp(sender, password, to_email, subject, body)
+    return f"stub-{uuid4().hex}", f"stub-thread-{uuid4().hex}"
+
+
 class OutreachEmailService:
     def _has_outbound_email(self, lead_id: int) -> bool:
         return SentEmail.objects.filter(
@@ -21,6 +31,8 @@ class OutreachEmailService:
         self,
         lead_id: int,
         user_id: int,
+        to_email: str | None,
+        name: str | None,
         subject: str | None,
         gmail_thread_id: str | None,
         company_name: str | None,
@@ -32,6 +44,9 @@ class OutreachEmailService:
         if thread.user_id != user_id:
             thread.user_id = user_id
             thread.save(update_fields=["user_id"])
+
+        thread.to_email = to_email or ""
+        thread.name = name or ""
 
         if subject:
             thread.subject = subject
@@ -47,18 +62,8 @@ class OutreachEmailService:
         thread.save()
         return thread
 
-    def _send_email_stub(self, subject: str, body: str) -> tuple[str, str]:
-        message_id = f"stub-{uuid4().hex}"
-        thread_id = f"stub-thread-{uuid4().hex}"
-        return message_id, thread_id
-
     def _send_email(self, to_email: str, subject: str, body: str) -> tuple[str, str]:
-        sender = (os.environ.get("GMAIL_SENDER") or "").strip()
-        password = (os.environ.get("GMAIL_PASSWORD") or "").strip()
-        if sender and password:
-            rate_limit_gmail()
-            return send_via_smtp(sender, password, to_email, subject, body)
-        return self._send_email_stub(subject, body)
+        return send_email(to_email, subject, body)
 
     def run_from_payload(self, payload: dict) -> None:
         lead_id = payload.get("lead_id")
@@ -103,6 +108,8 @@ class OutreachEmailService:
         thread = self._get_or_create_thread(
             lead_id=lead_id,
             user_id=user_id,
+            to_email=email,
+            name=lead["name"],
             subject=subject,
             gmail_thread_id=thread_id,
             company_name=lead["company_name"],

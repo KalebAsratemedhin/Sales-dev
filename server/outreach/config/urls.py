@@ -4,7 +4,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from core.exceptions import ExpectedError, TransientError
-from core.api import config_detail, ingest_docs
+from core.api import config_detail, ingest_docs, run_followups
 from core.services.inbox import handle_inbox_reply_from_http
 
 
@@ -28,4 +28,5 @@ urlpatterns = [
     path("api/outreach/config/", config_detail),
     path("api/outreach/ingest-docs/", ingest_docs),
     path("api/outreach/handle-reply/", handle_reply),
+    path("api/outreach/run-followups/", run_followups),
 ]

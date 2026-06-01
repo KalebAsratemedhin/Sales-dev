@@ -1,11 +1,6 @@
-import json
-import os
-import pika
+from config.celery import app
 
 from core.models import Lead
-
-RABBITMQ_URL = os.environ.get("RABBITMQ_URL")
-QUEUE_LEAD_STATUS_UPDATE = "lead.status.update"
 
 
 def handle_lead_status_update(payload):
@@ -16,23 +11,6 @@ def handle_lead_status_update(payload):
     if new_status not in dict(Lead.Status.choices):
         return
     Lead.objects.filter(pk=lead_id).update(status=new_status)
-
-
-def run_consumer():
-    conn = pika.BlockingConnection(pika.URLParameters(RABBITMQ_URL))
-    ch = conn.channel()
-    ch.queue_declare(queue=QUEUE_LEAD_STATUS_UPDATE, durable=True)
-
-    def on_message(ch, method, properties, body):
-        try:
-            payload = json.loads(body)
-            handle_lead_status_update(payload)
-        except (json.JSONDecodeError, TypeError):
-            pass
-        ch.basic_ack(delivery_tag=method.delivery_tag)
-
-    ch.basic_consume(queue=QUEUE_LEAD_STATUS_UPDATE, on_message_callback=on_message)
-    ch.start_consuming()
 
 
 def _persona_payload(persona):
@@ -63,15 +41,4 @@ def publish_research_request(
         "persona": _persona_payload(persona),
         "user_id": user_id or 0,
     }
-    conn = pika.BlockingConnection(pika.URLParameters(RABBITMQ_URL))
-    try:
-        ch = conn.channel()
-        ch.queue_declare(queue="research.request", durable=True)
-        ch.basic_publish(
-            exchange="",
-            routing_key="research.request",
-            body=json.dumps(payload),
-            properties=pika.BasicProperties(delivery_mode=2),
-        )
-    finally:
-        conn.close()
+    app.send_task("research.run_research", args=[payload], queue="research")

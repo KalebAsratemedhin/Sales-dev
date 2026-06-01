@@ -1,42 +1,24 @@
 services:
-  postgres-leads:
+  postgres:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-salesdev}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-salesdev}
-      POSTGRES_DB: ${LEADS_DB:-leads_db}
+      POSTGRES_DB: ${POSTGRES_DB:-salesdev}
     volumes:
-      - postgres_leads_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-salesdev} -d ${LEADS_DB:-leads_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-salesdev} -d ${POSTGRES_DB:-salesdev}"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  postgres-research:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-salesdev}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-salesdev}
-      POSTGRES_DB: ${RESEARCH_DB:-research_db}
+  redis:
+    image: redis:7-alpine
     volumes:
-      - postgres_research_data:/var/lib/postgresql/data
+      - redis_data:/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-salesdev} -d ${RESEARCH_DB:-research_db}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  postgres-outreach:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-salesdev}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-salesdev}
-      POSTGRES_DB: ${OUTREACH_DB:-outreach_db}
-    volumes:
-      - postgres_outreach_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-salesdev} -d ${OUTREACH_DB:-outreach_db}"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -46,31 +28,18 @@ services:
     ports:
       - "5050:8080"
     depends_on:
-      postgres-leads:
-        condition: service_healthy
-      postgres-research:
-        condition: service_healthy
-      postgres-outreach:
+      postgres:
         condition: service_healthy
     restart: unless-stopped
-
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   leads:
     build:
       context: ./leads
       dockerfile: Dockerfile
     environment:
-      LEADS_DATABASE_URL: postgres://${POSTGRES_USER:-salesdev}:${POSTGRES_PASSWORD:-salesdev}@postgres-leads:5432/${LEADS_DB:-leads_db}
-      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/%2F
+      DATABASE_URL: postgres://${POSTGRES_USER:-salesdev}:${POSTGRES_PASSWORD:-salesdev}@postgres:5432/${POSTGRES_DB:-salesdev}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/1
       LEADS_SERVICE_INTERNAL_SECRET: ${LEADS_SERVICE_INTERNAL_SECRET:-dev-internal-secret}
       SECRET_KEY: ${SECRET_KEY:-change-me-leads}
       DEBUG: "false"
@@ -80,52 +49,66 @@ services:
       - linkedin_data:/app/data
       - media_data:/data
     depends_on:
-      postgres-leads:
+      postgres:
         condition: service_healthy
-      rabbitmq:
+      redis:
         condition: service_healthy
     expose:
-      - "8000"
+      - "8001"
+    ports:
+      - "8001:8001"
 
   research:
     build:
       context: .
       dockerfile: research/Dockerfile
     environment:
-      RESEARCH_DATABASE_URL: postgres://${POSTGRES_USER:-salesdev}:${POSTGRES_PASSWORD:-salesdev}@postgres-research:5432/${RESEARCH_DB:-research_db}
-      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/%2F
+      DATABASE_URL: postgres://${POSTGRES_USER:-salesdev}:${POSTGRES_PASSWORD:-salesdev}@postgres:5432/${POSTGRES_DB:-salesdev}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/1
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       SECRET_KEY: ${SECRET_KEY:-change-me-research}
       DEBUG: "false"
     depends_on:
-      postgres-research:
+      postgres:
         condition: service_healthy
-      rabbitmq:
+      redis:
         condition: service_healthy
+      leads:
+        condition: service_started
     expose:
-      - "8000"
+      - "8002"
+    ports:
+      - "8002:8002"
 
   outreach:
     build:
       context: .
       dockerfile: outreach/Dockerfile
     environment:
-      OUTREACH_DATABASE_URL: postgres://${POSTGRES_USER:-salesdev}:${POSTGRES_PASSWORD:-salesdev}@postgres-outreach:5432/${OUTREACH_DB:-outreach_db}
-      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/%2F
+      DATABASE_URL: postgres://${POSTGRES_USER:-salesdev}:${POSTGRES_PASSWORD:-salesdev}@postgres:5432/${POSTGRES_DB:-salesdev}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      REDIS_URL: redis://redis:6379/1
       LEADS_SERVICE_INTERNAL_SECRET: ${LEADS_SERVICE_INTERNAL_SECRET:-dev-internal-secret}
+      LEADS_SERVICE_URL: http://leads:8001
       SECRET_KEY: ${SECRET_KEY:-change-me-outreach}
       DEBUG: "false"
       CHROMA_HOST: http://chroma:8000
       GMAIL_SENDER: ${GMAIL_SENDER:-}
       GMAIL_PASSWORD: ${GMAIL_PASSWORD:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      FOLLOWUP_DAYS: ${FOLLOWUP_DAYS:-3}
     depends_on:
-      postgres-outreach:
+      postgres:
         condition: service_healthy
-      rabbitmq:
+      redis:
         condition: service_healthy
+      leads:
+        condition: service_started
     expose:
-      - "8000"
+      - "8003"
+    ports:
+      - "8003:8003"
     volumes:
       - media_data:/data
 
@@ -162,10 +145,8 @@ services:
       - research
       - outreach
 volumes:
-  postgres_leads_data:
-  postgres_research_data:
-  postgres_outreach_data:
-  rabbitmq_data:
+  postgres_data:
+  redis_data:
   chroma_data:
   linkedin_data:
   n8n_data:

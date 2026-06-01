@@ -21,7 +21,7 @@ def _get_user_settings(user_id: int) -> dict[str, Any]:
     if cached and time.time() - cached["fetched_at"] < _USER_SETTINGS_TTL_SECONDS:
         return cached["data"]
 
-    leads_base_url = os.environ.get("LEADS_SERVICE_URL") or "http://leads:8000"
+    leads_base_url = os.environ.get("LEADS_SERVICE_URL") or "http://leads:8001"
     internal_secret = os.environ.get("LEADS_SERVICE_INTERNAL_SECRET") or ""
     headers: dict[str, str] = {}
     if internal_secret:
