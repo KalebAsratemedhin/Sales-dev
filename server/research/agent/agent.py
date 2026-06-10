@@ -4,8 +4,17 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel
 
-from core.exceptions import TransientError
+from common.google_api import get_google_api_key
+from common.llm_errors import PERMANENT, classify_llm_error
+from core.exceptions import ExpectedError, TransientError
 from .prompts import ANALYZE_WEBSITE_PROMPT, build_analyze_website_prompt_context
+
+
+def _raise_llm_error(exc: Exception) -> None:
+    kind, message = classify_llm_error(exc)
+    if kind == PERMANENT:
+        raise ExpectedError(message) from exc
+    raise TransientError(message) from exc
 
 
 class WebsiteAnalysis(BaseModel):
@@ -15,15 +24,13 @@ class WebsiteAnalysis(BaseModel):
 
 
 def get_llm():
-    api_key = os.environ.get("GOOGLE_API_KEY")
-
-    if not api_key:
-        raise ValueError("GOOGLE_API_KEY environment variable is required")
+    api_key = get_google_api_key()
 
     return ChatGoogleGenerativeAI(
         model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
         google_api_key=api_key,
         temperature=0.2,
+        max_retries=0,
     )
 
 
@@ -49,7 +56,7 @@ def analyze_website(url: str, text: str, persona: dict | None = None) -> dict:
             "persona_block": persona_block,
         })
     except Exception as e:
-        raise TransientError(str(e)) from e
+        _raise_llm_error(e)
 
     return {
         "summary": result.summary,

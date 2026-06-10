@@ -3,7 +3,7 @@ import time
 
 import requests
 
-from core.exceptions import TransientError
+from core.exceptions import ExpectedError, TransientError
 
 FETCH_RETRIES = 3
 FETCH_BACKOFF_BASE = 1.0
@@ -37,6 +37,8 @@ def run_with_retries(fn, retries=3, backoff_base=1.0, *args, **kwargs):
     for attempt in range(retries):
         try:
             return fn(*args, **kwargs)
+        except ExpectedError:
+            raise
         except TransientError as e:
             last_error = e
             if attempt < retries - 1:

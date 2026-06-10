@@ -9,8 +9,8 @@ def run_research(self, payload):
     try:
         run_research_from_payload(payload)
     except ExpectedError as e:
-        # Permanent failure (bad payload / missing URL): drop without retry.
-        print("ExpectedError (drop research):", e)
+        # Permanent failure (bad payload, quota exhausted, etc.): drop without retry.
+        print("ExpectedError (drop research, no retry):", e)
         return
     except TransientError as e:
         # Retryable failure (network, rate limit, 5xx): exponential backoff.

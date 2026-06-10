@@ -4,7 +4,16 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel
 
-from core.exceptions import TransientError
+from common.google_api import get_google_api_key
+from common.llm_errors import PERMANENT, classify_llm_error
+from core.exceptions import ExpectedError, TransientError
+
+
+def _raise_llm_error(exc: Exception) -> None:
+    kind, message = classify_llm_error(exc)
+    if kind == PERMANENT:
+        raise ExpectedError(message) from exc
+    raise TransientError(message) from exc
 from .prompts import (
     FOLLOWUP_EMAIL_PROMPT,
     INBOX_REPLY_PROMPT,
@@ -25,15 +34,13 @@ class InboxReply(BaseModel):
 
 
 def get_llm():
-    api_key = os.environ.get("GOOGLE_API_KEY")
-
-    if not api_key:
-        raise ValueError("GOOGLE_API_KEY environment variable is required")
+    api_key = get_google_api_key()
 
     return ChatGoogleGenerativeAI(
         model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
         google_api_key=api_key,
         temperature=0.4,
+        max_retries=0,
     )
 
 
@@ -67,7 +74,7 @@ def draft_outreach_email(lead: dict, research: dict, persona: dict | None = None
             }
         )
     except Exception as e:
-        raise TransientError(str(e)) from e
+        _raise_llm_error(e)
 
     return {
         "subject": result.subject,
@@ -106,7 +113,7 @@ def draft_followup_email(lead: dict, research: dict, thread_messages: list[dict]
             }
         )
     except Exception as e:
-        raise TransientError(str(e)) from e
+        _raise_llm_error(e)
 
     return {
         "subject": result.subject,
@@ -165,7 +172,7 @@ def handle_inbox_reply(
             }
         )
     except Exception as e:
-        raise TransientError(str(e)) from e
+        _raise_llm_error(e)
 
     return {
         "reply_body": result.body,

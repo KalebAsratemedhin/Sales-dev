@@ -1,3 +1,3 @@
-from config.models import Lead, LinkedInSyncedPost, Persona
+from config.models import Lead, Persona
 
-__all__ = ["Lead", "LinkedInSyncedPost", "Persona"]
+__all__ = ["Lead", "Persona"]

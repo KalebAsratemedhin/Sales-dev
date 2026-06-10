@@ -1,0 +1,45 @@
+{
+  "name": "SalesMind — Daily Follow-ups",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "days", "daysInterval": 1, "triggerAtHour": 14 }]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Daily 14:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://nginx/api/outreach/run-followups/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Internal-Secret", "value": "={{ $env.LEADS_SERVICE_INTERNAL_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"days\": 3 }"
+      },
+      "id": "run-followups",
+      "name": "Run Follow-ups",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    }
+  ],
+  "connections": {
+    "Daily 14:00": {
+      "main": [[{ "node": "Run Follow-ups", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "salesmind" }]
+}

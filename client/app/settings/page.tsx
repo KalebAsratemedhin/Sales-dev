@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/Label";
 import { ScrollArea } from "@/components/ui/ScrollArea";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/use-toast";
+import { PersonaManager } from "@/components/features/PersonaManager";
 
 export default function SettingsPage() {
   const { data: profile, isLoading: profileLoading } = useGetProfileQuery();
@@ -35,7 +36,6 @@ export default function SettingsPage() {
   const [profilePicFile, setProfilePicFile] = useState<File | null>(null);
   const [profilePicObjectUrl, setProfilePicObjectUrl] = useState<string>("");
 
-  const [linkedinProfileUrl, setLinkedinProfileUrl] = useState("");
   const [calendlySchedulingUrl, setCalendlySchedulingUrl] = useState("");
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -47,7 +47,6 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!settings) return;
-    setLinkedinProfileUrl(settings.linkedin_profile_url ?? "");
     setCalendlySchedulingUrl(settings.calendly_scheduling_url ?? "");
   }, [settings]);
 
@@ -90,7 +89,7 @@ export default function SettingsPage() {
 
   const handleSaveSettings = async () => {
     try {
-      await updateSettings({ linkedin_profile_url: linkedinProfileUrl, calendly_scheduling_url: calendlySchedulingUrl }).unwrap();
+      await updateSettings({ calendly_scheduling_url: calendlySchedulingUrl }).unwrap();
       toast({ title: "Settings updated", description: "Your config changes were saved." });
     } catch (err) {
       toast({
@@ -218,24 +217,6 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="linkedinProfileUrl">LinkedIn profile URL</Label>
-                  <Input
-                    id="linkedinProfileUrl"
-                    type="url"
-                    value={linkedinProfileUrl}
-                    onChange={(e) => setLinkedinProfileUrl(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="linkedinLastSync">LinkedIn last sync</Label>
-                  <Input
-                    id="linkedinLastSync"
-                    value={settings?.linkedin_last_sync ? settings.linkedin_last_sync : "Never"}
-                    disabled
-                    className="cursor-not-allowed opacity-80"
-                  />
-                </div>
-                <div>
                   <Label htmlFor="calendlySchedulingUrl">Calendly scheduling URL</Label>
                   <Input
                     id="calendlySchedulingUrl"
@@ -253,6 +234,8 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
           </div>
+
+          <PersonaManager />
 
           <Card>
             <CardHeader>

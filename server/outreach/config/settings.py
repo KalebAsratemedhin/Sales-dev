@@ -119,3 +119,15 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_ACKS_LATE = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {"class": "logging.StreamHandler"},
+    },
+    "loggers": {
+        "common": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "core": {"handlers": ["console"], "level": "INFO", "propagate": False},
+    },
+}

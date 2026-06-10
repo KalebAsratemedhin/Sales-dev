@@ -4,8 +4,7 @@ server/.env
 server/.venv/
 client/node_modules/
 client/.next/
-docs/
 stitch_salesmind_prd/
-
-
+docs/PROJECT_STATUS.MD
+docs/
 **/.venv

@@ -3,8 +3,8 @@
 import { useState, useMemo, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useGetLeadsQuery } from "@/store/leadsApi";
+import { AddLeadDialog } from "@/components/features/AddLeadDialog";
 import { LeadTable } from "@/components/features/LeadTable";
-import { LinkedInSyncRange } from "@/components/features/LinkedInSyncRange";
 import { ScrollArea } from "@/components/ui/ScrollArea";
 import { leadsToCsv, downloadCsv } from "@/lib/csv";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -104,7 +104,8 @@ function LeadsContent() {
               real-time behavioral data.
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-center">
+            <AddLeadDialog />
             <button
               type="button"
               onClick={handleExportCsv}
@@ -115,10 +116,6 @@ function LeadsContent() {
               Export CSV
             </button>
           </div>
-        </div>
-
-        <div className="mb-8">
-          <LinkedInSyncRange />
         </div>
 
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
@@ -161,7 +158,7 @@ function LeadsContent() {
         </div>
 
         {isLoading && <LeadTableSkeleton />}
-        {error && (
+        {error != null && (
           <p className="py-8 text-center text-sm text-red-400">
             Failed to load leads. Check API base URL.
           </p>

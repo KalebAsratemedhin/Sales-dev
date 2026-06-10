@@ -1,3 +1,6 @@
+import os
+
+import requests
 from django.conf import settings
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -7,9 +10,8 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from core.models import Lead
 from core.permissions import InternalSecretOrAuthenticated
 from core.serializers import LeadSerializer
-from core.messaging import publish_research_request
+from core.messaging import publish_outreach_request, publish_research_request
 from core.services.linkedin_csv_import_service import LinkedInConnectionsCsvImportService
-from core.services.linkedin_lead_sync_service import LinkedInLeadSyncService
 
 
 class LeadViewSet(viewsets.ModelViewSet):
@@ -68,6 +70,43 @@ class LeadViewSet(viewsets.ModelViewSet):
             qs = qs.filter(persona_id=persona_id)
         return qs
 
+    @action(detail=True, methods=["post"], url_path="send-outreach")
+    def send_outreach(self, request, pk=None):
+        lead = self.get_object()
+        if not (lead.email or "").strip():
+            return Response({"error": "lead has no email"}, status=status.HTTP_400_BAD_REQUEST)
+
+        research_base = (os.environ.get("RESEARCH_SERVICE_URL") or "http://research:8002").rstrip("/")
+        auth = request.headers.get("Authorization") or ""
+        try:
+            resp = requests.get(
+                f"{research_base}/api/research/leads/{lead.id}/",
+                headers={"Authorization": auth},
+                timeout=15,
+            )
+        except requests.RequestException as e:
+            return Response({"error": f"research service unavailable: {e}"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        if resp.status_code == 404:
+            return Response({"error": "research not found"}, status=status.HTTP_400_BAD_REQUEST)
+        if resp.status_code >= 400:
+            return Response({"error": "failed to load research"}, status=status.HTTP_502_BAD_GATEWAY)
+
+        research = resp.json()
+        publish_outreach_request(
+            lead_id=lead.id,
+            email=lead.email,
+            name=lead.name,
+            company_name=lead.company_name,
+            company_website=lead.company_website,
+            research_summary=research.get("website_summary") or "",
+            pain_points=research.get("pain_points") or [],
+            use_cases=research.get("use_cases") or [],
+            persona=lead.persona,
+            user_id=lead.user_id or 0,
+        )
+        return Response({"queued": True}, status=status.HTTP_202_ACCEPTED)
+
     @action(detail=False, methods=["post"], url_path="import/linkedin-connections")
     def import_linkedin_connections_csv(self, request):
         upload = request.FILES.get("file")
@@ -86,56 +125,6 @@ class LeadViewSet(viewsets.ModelViewSet):
                 "updated": result.updated,
                 "skipped": result.skipped,
                 "errors": result.errors,
-            },
-            status=status.HTTP_200_OK,
-        )
-
-    @action(detail=False, methods=["get"], url_path="linkedin/lead-sync/auth-url")
-    def linkedin_lead_sync_auth_url(self, request):
-        svc = LinkedInLeadSyncService()
-        payload = svc.build_authorize_url(user_id=request.user.id)
-        return Response(payload, status=status.HTTP_200_OK)
-
-    @action(detail=False, methods=["post"], url_path="linkedin/lead-sync/exchange")
-    def linkedin_lead_sync_exchange(self, request):
-        code = (request.data or {}).get("code")
-        svc = LinkedInLeadSyncService()
-        conn = svc.connect(user_id=request.user.id, code=code)
-        return Response(
-            {
-                "connected": bool(conn.access_token),
-                "scope": conn.scope,
-                "expires_at": conn.expires_at,
-            },
-            status=status.HTTP_200_OK,
-        )
-
-    @action(detail=False, methods=["post"], url_path="linkedin/lead-sync/pull")
-    def linkedin_lead_sync_pull(self, request):
-        body = request.data or {}
-        organization_urn = (body.get("organization_urn") or "").strip()
-        sponsored_account_urn = (body.get("sponsored_account_urn") or "").strip()
-        owner = {}
-        if organization_urn:
-            owner["organization"] = organization_urn
-        if sponsored_account_urn:
-            owner["sponsoredAccount"] = sponsored_account_urn
-        if not owner:
-            return Response(
-                {"error": "Provide organization_urn or sponsored_account_urn."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        start = int(body.get("start") or 0)
-        count = int(body.get("count") or 50)
-        svc = LinkedInLeadSyncService()
-        result = svc.pull_and_import(user_id=request.user.id, owner=owner, start=start, count=count)
-        return Response(
-            {
-                "imported": result.imported,
-                "skipped": result.skipped,
-                "errors": result.errors,
-                "next_start": result.next_start,
             },
             status=status.HTTP_200_OK,
         )

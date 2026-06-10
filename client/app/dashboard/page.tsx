@@ -36,7 +36,7 @@ export default function DashboardPage() {
           {isLoading && (
             <p className="text-slate-500 text-sm">Loading…</p>
           )}
-          {error && (
+          {error != null && (
             <p className="text-red-400 text-sm">Failed to load leads.</p>
           )}
           {!isLoading && !error && (

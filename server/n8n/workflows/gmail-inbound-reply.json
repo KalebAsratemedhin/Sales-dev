@@ -1,0 +1,64 @@
+{
+  "name": "SalesMind — Gmail Inbound Reply",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": { "item": [{ "mode": "everyMinute" }] },
+        "simple": false,
+        "filters": { "readStatus": "unread", "includeSpamTrash": false },
+        "options": { "downloadAttachments": false }
+      },
+      "id": "gmail-trigger",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "credentials": { "gmailOAuth2": { "id": "CONFIGURE_ME", "name": "Gmail account" } }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://nginx/api/outreach/handle-reply/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ thread_id: $json.threadId || '', from_email: ($json.from && $json.from.value && $json.from.value[0] && $json.from.value[0].address) || ($json.from && $json.from.address) || '', raw_body: $json.textPlain || $json.snippet || $json.textHtml || $json.text || '' }) }}"
+      },
+      "id": "handle-reply",
+      "name": "Handle Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "reply",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "message": "={{ $json.reply_body }}",
+        "options": {}
+      },
+      "id": "gmail-send",
+      "name": "Send Gmail Reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [720, 300],
+      "credentials": { "gmailOAuth2": { "id": "CONFIGURE_ME", "name": "Gmail account" } }
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [[{ "node": "Handle Reply", "type": "main", "index": 0 }]]
+    },
+    "Handle Reply": {
+      "main": [[{ "node": "Send Gmail Reply", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "salesmind" }]
+}

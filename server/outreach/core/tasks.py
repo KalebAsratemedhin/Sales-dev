@@ -9,7 +9,7 @@ def run_outreach(self, payload):
     try:
         run_outreach_from_payload(payload)
     except ExpectedError as e:
-        print("ExpectedError (drop outreach):", e)
+        print("ExpectedError (drop outreach, no retry):", e)
         return
     except TransientError as e:
         countdown = min(60, 5 * (2 ** self.request.retries))
@@ -23,7 +23,7 @@ def send_followup(self, thread_id):
     try:
         send_followup_for_thread(thread_id)
     except ExpectedError as e:
-        print("ExpectedError (drop followup):", e)
+        print("ExpectedError (drop followup, no retry):", e)
         return
     except TransientError as e:
         countdown = min(60, 5 * (2 ** self.request.retries))

@@ -11,8 +11,8 @@ const nextConfig: NextConfig = {
       { source: "/api/auth/:path*", destination: `${apiTarget}/api/auth/:path*` },
       { source: "/api/outreach", destination: `${apiTarget}/api/outreach` },
       { source: "/api/outreach/:path*", destination: `${apiTarget}/api/outreach/:path*` },
-      { source: "/api/linkedin", destination: `${apiTarget}/api/linkedin` },
-      { source: "/api/linkedin/:path*", destination: `${apiTarget}/api/linkedin/:path*` },
+      { source: "/api/research", destination: `${apiTarget}/api/research` },
+      { source: "/api/research/:path*", destination: `${apiTarget}/api/research/:path*` },
     ];
   },
 };

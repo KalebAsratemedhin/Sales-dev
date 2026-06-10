@@ -36,15 +36,17 @@ services:
     build:
       context: ./leads
       dockerfile: Dockerfile
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-salesdev}:${POSTGRES_PASSWORD:-salesdev}@postgres:5432/${POSTGRES_DB:-salesdev}
       CELERY_BROKER_URL: redis://redis:6379/0
       REDIS_URL: redis://redis:6379/1
       LEADS_SERVICE_INTERNAL_SECRET: ${LEADS_SERVICE_INTERNAL_SECRET:-dev-internal-secret}
+      RESEARCH_SERVICE_URL: http://research:8002
       SECRET_KEY: ${SECRET_KEY:-change-me-leads}
       DEBUG: "false"
-      LINKEDIN_EMAIL: ${LINKEDIN_EMAIL}
-      LINKEDIN_PASSWORD: ${LINKEDIN_PASSWORD}
+      ALLOWED_HOSTS: localhost,127.0.0.1,leads,nginx,research,outreach
     volumes:
       - linkedin_data:/app/data
       - media_data:/data
@@ -62,13 +64,17 @@ services:
     build:
       context: .
       dockerfile: research/Dockerfile
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-salesdev}:${POSTGRES_PASSWORD:-salesdev}@postgres:5432/${POSTGRES_DB:-salesdev}
       CELERY_BROKER_URL: redis://redis:6379/0
       REDIS_URL: redis://redis:6379/1
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      LEADS_SERVICE_URL: http://leads:8001
       SECRET_KEY: ${SECRET_KEY:-change-me-research}
       DEBUG: "false"
+      ALLOWED_HOSTS: localhost,127.0.0.1,research,nginx,leads,outreach
     depends_on:
       postgres:
         condition: service_healthy
@@ -85,6 +91,8 @@ services:
     build:
       context: .
       dockerfile: outreach/Dockerfile
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-salesdev}:${POSTGRES_PASSWORD:-salesdev}@postgres:5432/${POSTGRES_DB:-salesdev}
       CELERY_BROKER_URL: redis://redis:6379/0
@@ -98,6 +106,8 @@ services:
       GMAIL_PASSWORD: ${GMAIL_PASSWORD:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       FOLLOWUP_DAYS: ${FOLLOWUP_DAYS:-3}
+      # Docker service names so n8n (and nginx) can call outreach internally
+      ALLOWED_HOSTS: localhost,127.0.0.1,outreach,nginx,n8n
     depends_on:
       postgres:
         condition: service_healthy
@@ -130,6 +140,8 @@ services:
       N8N_BASIC_AUTH_ACTIVE: "true"
       N8N_BASIC_AUTH_USER: "admin"
       N8N_BASIC_AUTH_PASSWORD: "${N8N_PASSWORD:-changeme}"
+      # Gmail workflow uses built-in nodes only; skip npm registry fetch (avoids ECONNRESET noise)
+      N8N_COMMUNITY_PACKAGES_ENABLED: "false"
     volumes:
       - n8n_data:/home/node/.n8n
     restart: unless-stopped

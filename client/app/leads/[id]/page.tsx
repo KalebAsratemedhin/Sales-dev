@@ -1,7 +1,12 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useGetLeadQuery } from "@/store/leadsApi";
+import Link from "next/link";
+import { useGetLeadQuery, useSendOutreachMutation } from "@/store/leadsApi";
+import { Button } from "@/components/ui/Button";
+import { toast } from "@/components/ui/use-toast";
+import { useGetResearchByLeadQuery } from "@/store/researchApi";
+import { useGetThreadsQuery } from "@/store/outreachApi";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ScrollArea } from "@/components/ui/ScrollArea";
 
@@ -29,245 +34,144 @@ function domainFromUrl(url: string): string {
   }
 }
 
-/** Placeholder score 0–100 from lead id. */
-function scoreFromLeadId(id: number): number {
-  return Math.min(100, 50 + (id % 51));
-}
-
 export default function LeadDetailPage() {
   const params = useParams();
   const id = Number(params.id);
   const { data: lead, isLoading, error } = useGetLeadQuery(id, { skip: !id });
+  const { data: research } = useGetResearchByLeadQuery(id, { skip: !id });
+  const { data: threads = [] } = useGetThreadsQuery({ lead_id: id }, { skip: !id });
+  const [sendOutreach, { isLoading: sending }] = useSendOutreachMutation();
+
+  const canSendOutreach = Boolean(research) && lead?.status === "researched" && !threads.length;
+
+  const handleSendOutreach = async () => {
+    try {
+      await sendOutreach(id).unwrap();
+      toast({ title: "Outreach queued", description: "Email send is in progress." });
+    } catch {
+      toast({ title: "Send failed", description: "Could not queue outreach.", variant: "destructive" });
+    }
+  };
 
   if (isLoading || !lead) {
     return (
       <div className="flex-1 p-8">
         <h1 className="text-2xl font-bold text-slate-100">Lead</h1>
         {isLoading && <p className="text-slate-500 mt-2">Loading…</p>}
-        {error && <p className="text-red-400 mt-2">Failed to load lead.</p>}
+        {error != null && <p className="text-red-400 mt-2">Failed to load lead.</p>}
       </div>
     );
   }
 
-  const score = scoreFromLeadId(lead.id);
   const companyDomain = domainFromUrl(lead.company_website || "");
+  const thread = threads[0];
 
   return (
     <ScrollArea className="flex-1">
       <div className="p-8">
         <div className="max-w-6xl mx-auto space-y-8">
-          {/* Hero / Summary */}
           <div className="flex flex-col md:flex-row gap-8 items-start justify-between">
             <div className="flex gap-6 items-center">
-              <div className="relative">
-                <div className="size-24 rounded-lg bg-primary/10 border-2 border-primary overflow-hidden flex items-center justify-center text-primary text-2xl font-bold">
-                  {(lead.name || lead.email).slice(0, 2).toUpperCase()}
-                </div>
-                <div className="absolute -bottom-2 -right-2 px-2 py-0.5 bg-primary text-primary-foreground text-[10px] font-bold uppercase rounded">
-                  High Intent
-                </div>
+              <div className="size-24 rounded-lg bg-primary/10 border-2 border-primary flex items-center justify-center text-primary text-2xl font-bold">
+                {(lead.name || lead.email).slice(0, 2).toUpperCase()}
               </div>
               <div>
                 <h1 className="text-3xl font-bold tracking-tight text-slate-100">
                   {lead.name || lead.email}
                 </h1>
-                <p className="text-slate-500 flex items-center gap-2 mt-1">
-                  <span className="material-symbols-outlined text-sm">business</span>
-                  {lead.company_name ? `${lead.company_name}` : "—"}
-                </p>
-                <div className="mt-2 flex gap-2 flex-wrap">
-                  <span className="px-2 py-0.5 bg-primary/20 text-primary text-xs font-bold rounded flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs">verified</span>
-                    Verified
-                  </span>
-                  <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-xs font-bold rounded flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs">mail</span>
-                    Responsive
-                  </span>
+                <p className="text-slate-500 mt-1">{lead.company_name || "—"}</p>
+                <div className="mt-2">
+                  <StatusBadge status={lead.status} />
                 </div>
               </div>
             </div>
-            <div className="flex gap-4">
-              <button
-                type="button"
-                className="px-6 py-2.5 bg-primary/10 text-primary font-bold text-sm rounded border border-transparent hover:border-primary transition-all flex items-center gap-2"
-              >
-                <span className="material-symbols-outlined text-sm">edit</span>
-                EDIT PROFILE
-              </button>
-              <button
-                type="button"
-                className="px-6 py-2.5 bg-primary text-primary-foreground font-bold text-sm rounded hover:opacity-90 transition-all flex items-center gap-2"
-              >
-                <span className="material-symbols-outlined text-sm">bolt</span>
-                CONVERT LEAD
-              </button>
-            </div>
+            {thread && (
+              <Link href="/inbox" className="text-sm text-primary font-bold hover:underline">
+                Open inbox thread
+              </Link>
+            )}
           </div>
 
-          {/* Metrics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-primary/5 border border-primary/20 p-5 rounded-lg">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">
-                Lead Score
-              </p>
-              <div className="flex items-end gap-2">
-                <span className="text-4xl font-bold text-primary">{score}</span>
-                <span className="text-xs text-emerald-500 font-bold mb-1">+4pt</span>
-              </div>
-            </div>
-            <div className="bg-primary/5 border border-primary/20 p-5 rounded-lg">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">
-                Engagement Rate
-              </p>
-              <div className="flex items-end gap-2">
-                <span className="text-4xl font-bold text-slate-100">84%</span>
-                <span className="text-xs text-emerald-500 font-bold mb-1">+12%</span>
-              </div>
-            </div>
-            <div className="bg-primary/5 border border-primary/20 p-5 rounded-lg">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">
-                Email Opens
-              </p>
-              <div className="flex items-end gap-2">
-                <span className="text-4xl font-bold text-slate-100">—</span>
-                <span className="text-xs text-slate-500 font-bold mb-1">total</span>
-              </div>
-            </div>
-            <div className="bg-primary/5 border border-primary/20 p-5 rounded-lg">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">
-                Avg Response
-              </p>
-              <div className="flex items-end gap-2">
-                <span className="text-4xl font-bold text-slate-100">—</span>
-                <span className="text-xs text-slate-500 font-bold mb-1">—</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Details & Timeline Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left: Info Column */}
             <div className="lg:col-span-1 space-y-6">
-              <div className="bg-background/40 border border-primary/20 rounded-lg overflow-hidden">
-                <div className="px-6 py-4 border-b border-primary/20 bg-primary/5 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary text-sm">info</span>
-                  <h3 className="font-bold text-sm uppercase tracking-wider text-slate-100">
-                    Technical Profile
-                  </h3>
-                </div>
-                <div className="p-6 space-y-4">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                      Company Domain
-                    </p>
-                    <p className="text-sm font-medium flex items-center justify-between text-slate-100">
-                      {companyDomain}
-                      {lead.company_website && (
-                        <a
-                          href={lead.company_website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="material-symbols-outlined text-xs text-primary"
-                          aria-label="Open website"
-                        >
-                          link
-                        </a>
-                      )}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                      Industry Vertical
-                    </p>
-                    <p className="text-sm font-medium text-slate-300">—</p>
-                  </div>
-                  <div className="space-y-1 pt-4 border-t border-primary/10">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                      Primary Contact
-                    </p>
-                    <p className="text-sm font-medium text-slate-100">{lead.email}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-background/40 border border-primary/20 rounded-lg overflow-hidden">
-                <div className="px-6 py-4 border-b border-primary/20 bg-primary/5 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-sm">
-                      bookmark
-                    </span>
-                    <h3 className="font-bold text-sm uppercase tracking-wider text-slate-100">
-                      Internal Tags
-                    </h3>
-                  </div>
-                  <button
-                    type="button"
-                    className="material-symbols-outlined text-xs text-slate-400 hover:text-primary"
-                    aria-label="Add tag"
+              <div className="bg-background/40 border border-primary/20 rounded-lg p-6 space-y-4">
+                <h3 className="font-bold text-sm uppercase tracking-wider text-slate-100">Contact</h3>
+                <p className="text-sm text-slate-300">{lead.email}</p>
+                <p className="text-sm text-slate-300">{companyDomain}</p>
+                {lead.company_website && (
+                  <a
+                    href={lead.company_website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary hover:underline"
                   >
-                    add_circle
-                  </button>
-                </div>
-                <div className="p-6 flex flex-wrap gap-2">
-                  <StatusBadge status={lead.status} className="border border-primary/30" />
-                </div>
+                    Visit website
+                  </a>
+                )}
+                <p className="text-xs text-slate-500">Source: {lead.source}</p>
+                <p className="text-xs text-slate-500">Created {formatDate(lead.created_at)}</p>
               </div>
             </div>
 
-            {/* Right: Timeline Column */}
-            <div className="lg:col-span-2 space-y-4">
-              <div className="flex items-center justify-between mb-2 px-2">
-                <h3 className="font-bold text-sm uppercase tracking-widest flex items-center gap-2 text-slate-100">
-                  <span className="material-symbols-outlined text-primary">history</span>
-                  Activity Timeline
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-background/40 border border-primary/20 rounded-lg p-6">
+                <h3 className="font-bold text-sm uppercase tracking-wider text-slate-100 mb-4">
+                  Research
                 </h3>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    className="px-3 py-1 bg-primary/20 text-primary text-xs font-bold rounded"
-                  >
-                    All
-                  </button>
-                  <button
-                    type="button"
-                    className="px-3 py-1 bg-white/5 text-slate-400 text-xs font-bold rounded hover:bg-primary/5"
-                  >
-                    Communications
-                  </button>
-                  <button
-                    type="button"
-                    className="px-3 py-1 bg-white/5 text-slate-400 text-xs font-bold rounded hover:bg-primary/5"
-                  >
-                    System
-                  </button>
-                </div>
-              </div>
-              <div className="space-y-4 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-0.5 before:bg-primary/10">
-                <div className="relative pl-12">
-                  <div className="absolute left-0 top-0 size-10 bg-primary/20 border border-primary rounded-full flex items-center justify-center z-10">
-                    <span className="material-symbols-outlined text-primary text-lg">mail</span>
+                {research ? (
+                  <div className="space-y-3 text-sm text-slate-300">
+                    <p className="leading-relaxed">{research.website_summary || "—"}</p>
+                    {research.pain_points?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-bold text-slate-500 uppercase mb-1">Pain points</p>
+                        <ul className="list-disc pl-5 space-y-1">
+                          {research.pain_points.map((p, i) => (
+                            <li key={i}>{p}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {research.use_cases?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-bold text-slate-500 uppercase mb-1">Use cases</p>
+                        <ul className="list-disc pl-5 space-y-1">
+                          {research.use_cases.map((u, i) => (
+                            <li key={i}>{u}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
-                  <div className="bg-primary/5 border border-primary/20 p-4 rounded-lg">
-                    <div className="flex justify-between items-start mb-2">
-                      <p className="text-sm font-bold text-slate-100">Lead added</p>
-                      <span className="text-[10px] font-medium text-slate-500 uppercase">
-                        {formatDate(lead.created_at)}
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-400 leading-relaxed">
-                      Lead created from {lead.source || "pipeline"}. Last updated{" "}
-                      {formatDate(lead.updated_at)}.
+                ) : (
+                  <p className="text-slate-500 text-sm">
+                    {lead.company_website ? "Research pending or not started." : "Add a company website to trigger research."}
+                  </p>
+                )}
+                {canSendOutreach && (
+                  <div className="mt-4 pt-4 border-t border-primary/10">
+                    <p className="text-xs text-slate-500 mb-3">
+                      Research is ready but the outreach email was not sent (e.g. SMTP or network error).
                     </p>
+                    <Button onClick={handleSendOutreach} disabled={sending}>
+                      {sending ? "Sending…" : "Send outreach email"}
+                    </Button>
                   </div>
-                </div>
+                )}
               </div>
-              <div className="flex justify-center pt-4">
-                <button
-                  type="button"
-                  className="px-4 py-2 text-[10px] font-bold tracking-widest text-slate-500 border border-primary/20 rounded hover:bg-primary/5 transition-colors"
-                >
-                  FETCH OLDER RECORDS
-                </button>
+
+              <div className="bg-background/40 border border-primary/20 rounded-lg p-6">
+                <h3 className="font-bold text-sm uppercase tracking-wider text-slate-100 mb-4">
+                  Email history
+                </h3>
+                {thread ? (
+                  <div className="space-y-2 text-sm">
+                    <p className="text-slate-300 font-medium">{thread.subject}</p>
+                    <p className="text-slate-500">{thread.message_count} messages · last {formatDate(thread.last_message_at)}</p>
+                    <p className="text-slate-400 line-clamp-3">{thread.preview}</p>
+                  </div>
+                ) : (
+                  <p className="text-slate-500 text-sm">No outreach emails yet.</p>
+                )}
               </div>
             </div>
           </div>

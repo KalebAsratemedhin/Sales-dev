@@ -11,9 +11,10 @@ from core.rate_limit import rate_limit_gmail, rate_limit_llm_outreach
 
 
 def send_email(to_email: str, subject: str, body: str) -> tuple[str, str]:
-    """Send via Gmail SMTP when credentials are present, else return a stub id."""
+    """Send via Gmail SMTP (app password) when configured, else return a stub id."""
     sender = (os.environ.get("GMAIL_SENDER") or "").strip()
     password = (os.environ.get("GMAIL_PASSWORD") or "").strip()
+
     if sender and password:
         rate_limit_gmail()
         return send_via_smtp(sender, password, to_email, subject, body)

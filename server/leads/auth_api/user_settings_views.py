@@ -1,6 +1,5 @@
 import logging
 import os
-from datetime import date
 from typing import Any
 
 import requests
@@ -104,12 +103,9 @@ class OutreachSettingsView(APIView):
             return Response({"detail": "user_id is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         settings_obj, _ = OutreachSettings.objects.get_or_create(user=user)
-        last_sync = settings_obj.linkedin_last_sync.isoformat() if settings_obj.linkedin_last_sync else None
         return Response(
             {
-                "linkedin_profile_url": settings_obj.linkedin_profile_url or "",
                 "calendly_scheduling_url": settings_obj.calendly_scheduling_url or "",
-                "linkedin_last_sync": last_sync,
             },
             status=status.HTTP_200_OK,
         )
@@ -120,29 +116,12 @@ class OutreachSettingsView(APIView):
             return Response({"detail": "user_id is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         settings_obj, _ = OutreachSettings.objects.get_or_create(user=user)
-        linkedin_profile_url = request.data.get("linkedin_profile_url")
         calendly_scheduling_url = request.data.get("calendly_scheduling_url")
-        linkedin_last_sync = request.data.get("linkedin_last_sync")
 
-        if linkedin_profile_url is not None:
-            settings_obj.linkedin_profile_url = str(linkedin_profile_url).strip()
         if calendly_scheduling_url is not None:
             settings_obj.calendly_scheduling_url = str(calendly_scheduling_url).strip()
-        if linkedin_last_sync is not None:
-            raw = str(linkedin_last_sync).strip()
-            if not raw:
-                settings_obj.linkedin_last_sync = None
-            else:
-                settings_obj.linkedin_last_sync = date.fromisoformat(raw[:10])
 
-        settings_obj.save(
-            update_fields=[
-                "linkedin_profile_url",
-                "calendly_scheduling_url",
-                "linkedin_last_sync",
-                "updated_at",
-            ]
-        )
+        settings_obj.save(update_fields=["calendly_scheduling_url", "updated_at"])
         return self.get(request)
 
 

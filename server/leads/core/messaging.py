@@ -42,3 +42,30 @@ def publish_research_request(
         "user_id": user_id or 0,
     }
     app.send_task("research.run_research", args=[payload], queue="research")
+
+
+def publish_outreach_request(
+    lead_id,
+    email,
+    name,
+    company_name,
+    company_website,
+    research_summary,
+    pain_points,
+    use_cases,
+    persona=None,
+    user_id: int | None = None,
+):
+    payload = {
+        "lead_id": lead_id,
+        "email": email or "",
+        "name": name or "",
+        "company_name": company_name or "",
+        "company_website": company_website or "",
+        "research_summary": research_summary or "",
+        "pain_points": pain_points or [],
+        "use_cases": use_cases or [],
+        "persona": _persona_payload(persona),
+        "user_id": user_id or 0,
+    }
+    app.send_task("outreach.run_outreach", args=[payload], queue="outreach")

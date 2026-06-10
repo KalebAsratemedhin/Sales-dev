@@ -1,10 +1,35 @@
+from django.utils import timezone
+
 from agent.agent import handle_inbox_reply
 from core.exceptions import ExpectedError
+from core.messaging.publish import publish_lead_status_update
 from core.models import EmailThread, SentEmail
 from core.rate_limit import rate_limit_llm_outreach
 
 
 class InboxService:
+    def _find_thread(self, *, thread_id: str, from_email: str, lead_id) -> EmailThread | None:
+        if thread_id:
+            thread = EmailThread.objects.filter(gmail_thread_id=thread_id).first()
+            if thread:
+                return thread
+
+        if lead_id is not None:
+            thread = EmailThread.objects.filter(lead_id=lead_id).first()
+            if thread:
+                return thread
+
+        if from_email:
+            thread = (
+                EmailThread.objects.filter(to_email__iexact=from_email)
+                .order_by("-last_message_at", "-created_at")
+                .first()
+            )
+            if thread:
+                return thread
+
+        return None
+
     def build_thread_messages(self, thread: EmailThread) -> list[dict]:
         messages: list[dict] = []
         emails = thread.emails.order_by("sent_at")
@@ -14,6 +39,32 @@ class InboxService:
             body = (email.body or "")[:2000]
             messages.append({"author": author, "body": body})
         return messages
+
+    def draft_reply_for_thread(self, thread: EmailThread) -> dict:
+        last_inbound = (
+            thread.emails.filter(direction=SentEmail.Direction.INBOUND).order_by("-sent_at").first()
+        )
+        if last_inbound is None:
+            raise ExpectedError("no inbound message to reply to")
+
+        lead = {
+            "email": thread.to_email or "",
+            "company_name": thread.company_name or "",
+        }
+        research = {
+            "website_summary": thread.research_summary or "",
+            "pain_points": thread.pain_points or [],
+            "use_cases": thread.use_cases or [],
+        }
+        thread_messages = self.build_thread_messages(thread)
+        rate_limit_llm_outreach()
+        return handle_inbox_reply(
+            thread_messages=thread_messages,
+            new_message={"body": last_inbound.body or ""},
+            lead=lead,
+            research=research,
+            user_id=thread.user_id or 0,
+        )
 
     def handle_reply(self, payload: dict) -> dict:
         thread_id = (payload.get("thread_id") or "").strip()
@@ -25,16 +76,13 @@ class InboxService:
         if not raw_body:
             raise ExpectedError("raw_body is required")
 
-        thread = None
-        if thread_id:
-            thread = EmailThread.objects.filter(gmail_thread_id=thread_id).first()
-        if thread is None and lead_id is not None:
-            thread = EmailThread.objects.filter(lead_id=lead_id).first()
-            if thread and thread_id:
-                thread.gmail_thread_id = thread_id
-                thread.save(update_fields=["gmail_thread_id"])
+        thread = self._find_thread(thread_id=thread_id, from_email=from_email, lead_id=lead_id)
         if thread is None:
             raise ExpectedError("thread not found")
+
+        if thread_id and not thread.gmail_thread_id:
+            thread.gmail_thread_id = thread_id
+            thread.save(update_fields=["gmail_thread_id"])
 
         user_id = getattr(thread, "user_id", user_id) or 0
 
@@ -59,6 +107,11 @@ class InboxService:
             direction=SentEmail.Direction.INBOUND,
             body=raw_body,
         )
+        thread.last_message_at = timezone.now()
+        thread.save(update_fields=["last_message_at", "gmail_thread_id"])
+
+        if thread.lead_id:
+            publish_lead_status_update(thread.lead_id, "replied")
 
         rate_limit_llm_outreach()
         return handle_inbox_reply(

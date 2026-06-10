@@ -1,22 +1,25 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { leadsApi } from "./leadsApi";
-import { linkedinApi } from "./linkedinApi";
+import { outreachApi } from "./outreachApi";
 import { outreachConfigApi } from "./outreachConfigApi";
+import { researchApi } from "./researchApi";
 import { authApi } from "./authApi";
 
 export const makeStore = () =>
   configureStore({
     reducer: {
       [outreachConfigApi.reducerPath]: outreachConfigApi.reducer,
+      [outreachApi.reducerPath]: outreachApi.reducer,
+      [researchApi.reducerPath]: researchApi.reducer,
       [leadsApi.reducerPath]: leadsApi.reducer,
-      [linkedinApi.reducerPath]: linkedinApi.reducer,
       [authApi.reducerPath]: authApi.reducer,
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware().concat(
         outreachConfigApi.middleware,
+        outreachApi.middleware,
+        researchApi.middleware,
         leadsApi.middleware,
-        linkedinApi.middleware,
         authApi.middleware
       ),
   });

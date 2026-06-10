@@ -13,9 +13,7 @@ export interface UserProfile {
 }
 
 export interface UserSettings {
-  linkedin_profile_url: string;
   calendly_scheduling_url: string;
-  linkedin_last_sync?: string | null;
 }
 
 export interface ProductDoc {
@@ -38,32 +36,86 @@ export interface Lead {
   profile_url: string;
   persona: number | null;
   status: string;
-  linkedin_comment_count: number;
   created_at: string;
   updated_at: string;
 }
 
-/** For when Research API is exposed (list jobs, get by lead). */
+export interface Persona {
+  id: number;
+  name: string;
+  title_keywords: string;
+  industry_keywords: string;
+  search_keywords: string;
+  is_active: boolean;
+}
+
 export interface Research {
   id: number;
   lead_id: number;
-  website_summary?: string;
-  pain_points?: string[];
+  website_summary: string;
+  pain_points: string[];
+  use_cases: string[];
+  raw_content_preview: string;
   created_at: string;
 }
 
-/** For when Outreach/Inbox thread API is exposed. */
-export interface EmailThread {
+export interface ResearchListItem extends Research {
+  lead_name: string;
+  lead_email: string;
+  company_name: string;
+  lead_status: string;
+}
+
+export interface ResearchStats {
+  total: number;
+  today: number;
+  recent_logs: MonitorLogLine[];
+}
+
+export interface EmailThreadSummary {
   id: number;
   lead_id: number;
-  subject?: string;
+  name: string;
+  to_email: string;
+  subject: string;
+  company_name: string;
   last_message_at: string;
+  preview: string;
+  has_inbound: boolean;
+  unread: boolean;
+  message_count: number;
 }
 
 export interface SentEmail {
   id: number;
   thread_id: number;
   direction: "outbound" | "inbound";
-  body?: string;
+  body: string;
   sent_at: string;
+  message_id: string;
 }
+
+export interface EmailThreadDetail extends EmailThreadSummary {
+  research_summary: string;
+  pain_points: string[];
+  use_cases: string[];
+  gmail_thread_id: string;
+  messages: SentEmail[];
+}
+
+export interface OutreachStats {
+  threads_total: number;
+  emails_outbound: number;
+  emails_inbound: number;
+  outbound_today: number;
+  inbound_today: number;
+  unread_threads: number;
+  recent_logs: MonitorLogLine[];
+}
+
+export interface MonitorLogLine {
+  time: string;
+  level: string;
+  msg: string;
+}
+
