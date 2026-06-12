@@ -3,22 +3,24 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from agent.agent import draft_outreach_email
-from core.email import send_via_smtp
+from core.email import finalize_email_body, send_via_smtp
 from core.exceptions import ExpectedError, TransientError
 from core.messaging.publish import publish_lead_status_update
 from core.models import EmailThread, SentEmail
 from core.rate_limit import rate_limit_gmail, rate_limit_llm_outreach
 
 
-def send_email(to_email: str, subject: str, body: str) -> tuple[str, str]:
-    """Send via Gmail SMTP (app password) when configured, else return a stub id."""
+def send_email(to_email: str, subject: str, body: str, *, calendly_link: str = "") -> tuple[str, str, str]:
+    """Send via Gmail SMTP. Returns (message_id, thread_id, formatted_plain_body)."""
+    plain, html = finalize_email_body(body, calendly_link=calendly_link)
     sender = (os.environ.get("GMAIL_SENDER") or "").strip()
     password = (os.environ.get("GMAIL_PASSWORD") or "").strip()
 
     if sender and password:
         rate_limit_gmail()
-        return send_via_smtp(sender, password, to_email, subject, body)
-    return f"stub-{uuid4().hex}", f"stub-thread-{uuid4().hex}"
+        message_id, thread_id = send_via_smtp(sender, password, to_email, subject, plain, html_body=html)
+        return message_id, thread_id, plain
+    return f"stub-{uuid4().hex}", f"stub-thread-{uuid4().hex}", plain
 
 
 class OutreachEmailService:
@@ -63,7 +65,7 @@ class OutreachEmailService:
         thread.save()
         return thread
 
-    def _send_email(self, to_email: str, subject: str, body: str) -> tuple[str, str]:
+    def _send_email(self, to_email: str, subject: str, body: str) -> tuple[str, str, str]:
         return send_email(to_email, subject, body)
 
     def run_from_payload(self, payload: dict) -> None:
@@ -104,7 +106,7 @@ class OutreachEmailService:
         if not subject or not body:
             raise TransientError("draft_outreach_email returned empty subject/body")
 
-        message_id, thread_id = self._send_email(email, subject, body)
+        message_id, thread_id, formatted_body = self._send_email(email, subject, body)
 
         thread = self._get_or_create_thread(
             lead_id=lead_id,
@@ -123,7 +125,7 @@ class OutreachEmailService:
             thread=thread,
             message_id=message_id,
             direction=SentEmail.Direction.OUTBOUND,
-            body=body,
+            body=formatted_body,
         )
 
         publish_lead_status_update(lead_id, "emailed")

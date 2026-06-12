@@ -10,6 +10,7 @@ from core.exceptions import ExpectedError, TransientError
 from core.models import EmailThread, SentEmail
 from core.services.outreach_email import send_email
 from core.services.inbox import InboxService
+from core.services.scheduling import SchedulingService
 
 
 def _preview(body: str, limit: int = 160) -> str:
@@ -92,6 +93,17 @@ def thread_detail(request, thread_id: int):
             "use_cases": thread.use_cases or [],
             "gmail_thread_id": thread.gmail_thread_id or "",
             "messages": [_message_dict(e) for e in thread.emails.order_by("sent_at")],
+            "meetings": [
+                {
+                    "id": m.id,
+                    "title": m.title,
+                    "start_at": m.start_at.isoformat(),
+                    "duration_minutes": m.duration_minutes,
+                    "html_link": m.html_link,
+                    "lead_email": m.lead_email,
+                }
+                for m in thread.meetings.all()[:10]
+            ],
         }
     )
     return Response(data)
@@ -136,7 +148,7 @@ def thread_send_reply(request, thread_id: int):
         subject = f"Re: {subject}"
 
     try:
-        message_id, gmail_thread_id = send_email(to_email, subject, body)
+        message_id, gmail_thread_id, formatted_body = send_email(to_email, subject, body)
     except ExpectedError as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except TransientError as e:
@@ -153,9 +165,34 @@ def thread_send_reply(request, thread_id: int):
         thread=thread,
         message_id=message_id,
         direction=SentEmail.Direction.OUTBOUND,
-        body=body,
+        body=formatted_body,
     )
     thread.last_message_at = timezone.now()
     thread.save(update_fields=["last_message_at", "gmail_thread_id"])
 
     return Response({"sent": True, "message_id": message_id})
+
+
+@api_view(["POST"])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def thread_schedule(request, thread_id: int):
+    """Book a Google Calendar meeting for this thread and invite the lead."""
+    thread = _user_threads(request).filter(pk=thread_id).first()
+    if thread is None:
+        return Response({"error": "not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    data = request.data or {}
+    try:
+        result = SchedulingService().schedule_thread(
+            thread,
+            start_iso=(data.get("start_iso") or "").strip() or None,
+            duration_minutes=int(data.get("duration_minutes") or 30),
+            title=(data.get("title") or "").strip(),
+        )
+    except ExpectedError as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except TransientError as e:
+        return Response({"error": str(e)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    return Response(result, status=status.HTTP_201_CREATED)

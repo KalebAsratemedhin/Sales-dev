@@ -13,6 +13,7 @@ from core.api import (
     thread_draft_reply,
     thread_list,
     thread_send_reply,
+    thread_schedule,
 )
 from core.services.inbox import handle_inbox_reply_from_http
 
@@ -43,4 +44,5 @@ urlpatterns = [
     path("api/outreach/threads/<int:thread_id>/", thread_detail),
     path("api/outreach/threads/<int:thread_id>/draft/", thread_draft_reply),
     path("api/outreach/threads/<int:thread_id>/send/", thread_send_reply),
+    path("api/outreach/threads/<int:thread_id>/schedule/", thread_schedule),
 ]

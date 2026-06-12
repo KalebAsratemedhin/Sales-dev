@@ -1,10 +1,39 @@
 from django.utils import timezone
 
 from agent.agent import handle_inbox_reply
+from core.email import finalize_email_body
 from core.exceptions import ExpectedError
 from core.messaging.publish import publish_lead_status_update
 from core.models import EmailThread, SentEmail
 from core.rate_limit import rate_limit_llm_outreach
+from core.services.scheduling import SchedulingService
+
+_SCHEDULING_MARKERS = (
+    "meet",
+    "meeting",
+    "call",
+    "schedule",
+    "calendar",
+    "available",
+    "availability",
+    "time works",
+    "book a",
+    "zoom",
+    "teams",
+    "google meet",
+    "chat tomorrow",
+    "chat next",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+)
+
+
+def _might_want_scheduling(text: str) -> bool:
+    t = (text or "").lower()
+    return any(marker in t for marker in _SCHEDULING_MARKERS)
 
 
 class InboxService:
@@ -58,13 +87,18 @@ class InboxService:
         }
         thread_messages = self.build_thread_messages(thread)
         rate_limit_llm_outreach()
-        return handle_inbox_reply(
+        result = handle_inbox_reply(
             thread_messages=thread_messages,
             new_message={"body": last_inbound.body or ""},
             lead=lead,
             research=research,
             user_id=thread.user_id or 0,
         )
+        plain, _ = finalize_email_body(
+            result.get("reply_body") or "",
+            calendly_link=result.get("calendly_link") or "",
+        )
+        return {"body": plain}
 
     def handle_reply(self, payload: dict) -> dict:
         thread_id = (payload.get("thread_id") or "").strip()
@@ -87,7 +121,8 @@ class InboxService:
         user_id = getattr(thread, "user_id", user_id) or 0
 
         lead = {
-            "email": from_email or "",
+            "email": from_email or thread.to_email or "",
+            "name": thread.name or "",
             "company_name": thread.company_name or "",
         }
 
@@ -113,14 +148,41 @@ class InboxService:
         if thread.lead_id:
             publish_lead_status_update(thread.lead_id, "replied")
 
+        sched_result = None
+        if _might_want_scheduling(raw_body):
+            sched_result = SchedulingService().process_inbound(
+                thread=thread,
+                thread_messages=thread_messages,
+                latest_message=raw_body,
+                lead=lead,
+            )
+        if sched_result:
+            plain, _ = finalize_email_body(
+                sched_result.get("reply_body") or "",
+                calendly_link=sched_result.get("calendly_link") or "",
+            )
+            response = {
+                "reply_body": plain,
+                "calendly_link": sched_result.get("calendly_link") or "",
+                "event_created": sched_result.get("event_created", False),
+            }
+            if sched_result.get("meeting"):
+                response["meeting"] = sched_result["meeting"]
+            return response
+
         rate_limit_llm_outreach()
-        return handle_inbox_reply(
+        result = handle_inbox_reply(
             thread_messages=thread_messages,
             new_message=new_message,
             lead=lead,
             research=research,
             user_id=user_id,
         )
+        plain, _ = finalize_email_body(
+            result.get("reply_body") or "",
+            calendly_link=result.get("calendly_link") or "",
+        )
+        return {"reply_body": plain, "calendly_link": result.get("calendly_link") or "", "event_created": False}
 
 
 def handle_inbox_reply_from_http(payload: dict) -> dict:

@@ -19,12 +19,21 @@ def _raise_smtp_error(exc: Exception) -> None:
     raise TransientError(f"Gmail SMTP error: {exc}") from exc
 
 
-def send_via_smtp(sender: str, password: str, to_email: str, subject: str, body: str) -> tuple[str, str]:
-    msg = MIMEMultipart()
+def send_via_smtp(
+    sender: str,
+    password: str,
+    to_email: str,
+    subject: str,
+    body: str,
+    html_body: str | None = None,
+) -> tuple[str, str]:
+    msg = MIMEMultipart("alternative")
     msg["From"] = sender
     msg["To"] = to_email
     msg["Subject"] = subject
     msg.attach(MIMEText(body, "plain", "utf-8"))
+    if html_body:
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
     try:
         with smtplib.SMTP("smtp.gmail.com", 587) as server:
             server.starttls()

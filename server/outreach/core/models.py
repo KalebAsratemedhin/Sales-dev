@@ -49,3 +49,21 @@ class OutreachConfig(models.Model):
     def get_singleton(cls):
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
+
+
+class ScheduledMeeting(models.Model):
+    thread = models.ForeignKey(EmailThread, on_delete=models.CASCADE, related_name="meetings")
+    lead_id = models.BigIntegerField(db_index=True)
+    google_event_id = models.CharField(max_length=255, blank=True, default="")
+    html_link = models.URLField(blank=True, default="")
+    title = models.CharField(max_length=255, blank=True, default="")
+    start_at = models.DateTimeField()
+    duration_minutes = models.PositiveIntegerField(default=30)
+    lead_email = models.EmailField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-start_at"]
+
+    def __str__(self):
+        return f"ScheduledMeeting lead_id={self.lead_id} start={self.start_at}"

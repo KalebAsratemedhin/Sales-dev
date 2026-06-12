@@ -76,13 +76,13 @@ def send_followup_for_thread(thread_id: int) -> None:
     if not body:
         raise TransientError("draft_followup_email returned empty body")
 
-    message_id, _ = send_email(to_email, subject, body)
+    message_id, _, formatted_body = send_email(to_email, subject, body)
 
     SentEmail.objects.create(
         thread=thread,
         message_id=message_id,
         direction=SentEmail.Direction.OUTBOUND,
-        body=body,
+        body=formatted_body,
     )
     thread.last_message_at = timezone.now()
     thread.save(update_fields=["last_message_at"])
