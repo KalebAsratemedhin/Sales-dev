@@ -14,6 +14,16 @@ from core.api import (
     thread_list,
     thread_send_reply,
     thread_schedule,
+    calendar_auth_url,
+    calendar_disconnect,
+    calendar_exchange,
+    calendar_settings,
+    calendar_status,
+    gmail_auth_url,
+    gmail_disconnect,
+    gmail_exchange,
+    gmail_status,
+    gmail_sync_n8n,
 )
 from core.services.inbox import handle_inbox_reply_from_http
 
@@ -45,4 +55,14 @@ urlpatterns = [
     path("api/outreach/threads/<int:thread_id>/draft/", thread_draft_reply),
     path("api/outreach/threads/<int:thread_id>/send/", thread_send_reply),
     path("api/outreach/threads/<int:thread_id>/schedule/", thread_schedule),
+    path("api/outreach/calendar/status/", calendar_status),
+    path("api/outreach/calendar/auth-url/", calendar_auth_url),
+    path("api/outreach/calendar/exchange/", calendar_exchange),
+    path("api/outreach/calendar/disconnect/", calendar_disconnect),
+    path("api/outreach/calendar/settings/", calendar_settings),
+    path("api/outreach/gmail/status/", gmail_status),
+    path("api/outreach/gmail/auth-url/", gmail_auth_url),
+    path("api/outreach/gmail/exchange/", gmail_exchange),
+    path("api/outreach/gmail/disconnect/", gmail_disconnect),
+    path("api/outreach/gmail/sync-n8n/", gmail_sync_n8n),
 ]

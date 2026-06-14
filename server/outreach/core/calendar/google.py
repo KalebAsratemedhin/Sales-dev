@@ -3,55 +3,75 @@ import os
 from datetime import datetime, timedelta, timezone
 
 from core.exceptions import ExpectedError, TransientError
+from core.models import GoogleCalendarConnection, OutreachConfig
+from core.services.google_calendar_oauth import SCOPES, oauth_app_configured
 
 logger = logging.getLogger("google_calendar")
 
-SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
+TOKEN_URL = "https://oauth2.googleapis.com/token"
 
 
-def calendar_configured() -> bool:
-    return bool(
-        (os.environ.get("GOOGLE_OAUTH_CLIENT_ID") or "").strip()
-        and (os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET") or "").strip()
-        and (os.environ.get("GOOGLE_CALENDAR_REFRESH_TOKEN") or "").strip()
-    )
+def calendar_configured(user_id: int) -> bool:
+    if not oauth_app_configured() or not user_id:
+        return False
+    conn = GoogleCalendarConnection.objects.filter(user_id=user_id).first()
+    return bool(conn and conn.refresh_token)
 
 
-def _credentials():
+def _client_id() -> str:
+    return (os.environ.get("GOOGLE_OAUTH_CLIENT_ID") or "").strip()
+
+
+def _client_secret() -> str:
+    return (os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET") or "").strip()
+
+
+def _connection(user_id: int) -> GoogleCalendarConnection:
+    conn = GoogleCalendarConnection.objects.filter(user_id=user_id).first()
+    if not conn or not conn.refresh_token:
+        raise ExpectedError("Google Calendar is not connected for this user")
+    return conn
+
+
+def _credentials(user_id: int):
     from google.oauth2.credentials import Credentials
 
-    client_id = (os.environ.get("GOOGLE_OAUTH_CLIENT_ID") or "").strip()
-    client_secret = (os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET") or "").strip()
-    refresh_token = (os.environ.get("GOOGLE_CALENDAR_REFRESH_TOKEN") or "").strip()
-
-    if not all([client_id, client_secret, refresh_token]):
-        raise ExpectedError(
-            "Google Calendar not configured. Set GOOGLE_OAUTH_CLIENT_ID, "
-            "GOOGLE_OAUTH_CLIENT_SECRET, and GOOGLE_CALENDAR_REFRESH_TOKEN."
-        )
-
+    conn = _connection(user_id)
     return Credentials(
-        token=None,
-        refresh_token=refresh_token,
-        token_uri="https://oauth2.googleapis.com/token",
-        client_id=client_id,
-        client_secret=client_secret,
+        token=conn.access_token or None,
+        refresh_token=conn.refresh_token,
+        token_uri=TOKEN_URL,
+        client_id=_client_id(),
+        client_secret=_client_secret(),
         scopes=SCOPES,
     )
 
 
-def _calendar_service():
+def _calendar_service(user_id: int):
     from googleapiclient.discovery import build
 
-    return build("calendar", "v3", credentials=_credentials(), cache_discovery=False)
+    return build("calendar", "v3", credentials=_credentials(user_id), cache_discovery=False)
 
 
-def _calendar_id() -> str:
-    return (os.environ.get("GOOGLE_CALENDAR_ID") or os.environ.get("GMAIL_SENDER") or "primary").strip()
+def _calendar_id(user_id: int) -> str:
+    conn = _connection(user_id)
+    return (conn.calendar_id or "primary").strip()
 
 
-def _default_tz() -> str:
-    return (os.environ.get("DEFAULT_TIMEZONE") or "UTC").strip()
+def _default_tz(user_id: int) -> str:
+    conn = _connection(user_id)
+    if conn.timezone:
+        return conn.timezone.strip()
+    config = OutreachConfig.get_singleton()
+    return (config.default_timezone or "UTC").strip()
+
+
+def _default_duration(user_id: int) -> int:
+    conn = _connection(user_id)
+    if conn.meeting_duration_minutes:
+        return conn.meeting_duration_minutes
+    config = OutreachConfig.get_singleton()
+    return config.default_meeting_duration_minutes or 30
 
 
 def _parse_start(start_iso: str) -> datetime:
@@ -74,26 +94,27 @@ def _parse_start(start_iso: str) -> datetime:
 
 def create_meeting_event(
     *,
+    user_id: int,
     title: str,
     start_iso: str,
-    duration_minutes: int,
+    duration_minutes: int | None = None,
     lead_email: str,
     lead_name: str = "",
     company_name: str = "",
     description: str = "",
 ) -> dict:
-    if not calendar_configured():
-        raise ExpectedError("Google Calendar is not configured")
+    if not calendar_configured(user_id):
+        raise ExpectedError("Google Calendar is not connected for this user")
 
     start = _parse_start(start_iso)
-    duration = max(15, min(int(duration_minutes or 30), 180))
+    duration = max(15, min(int(duration_minutes or _default_duration(user_id)), 180))
     end = start + timedelta(minutes=duration)
-    tz = _default_tz()
+    tz = _default_tz(user_id)
+    conn = _connection(user_id)
 
-    owner_email = (os.environ.get("GMAIL_SENDER") or "").strip()
     attendees = []
-    if owner_email:
-        attendees.append({"email": owner_email, "responseStatus": "accepted"})
+    if conn.google_email:
+        attendees.append({"email": conn.google_email, "responseStatus": "accepted"})
     if lead_email:
         attendees.append({"email": lead_email})
 
@@ -107,11 +128,11 @@ def create_meeting_event(
     }
 
     try:
-        service = _calendar_service()
+        service = _calendar_service(user_id)
         created = (
             service.events()
             .insert(
-                calendarId=_calendar_id(),
+                calendarId=_calendar_id(user_id),
                 body=body,
                 sendUpdates="all",
             )
@@ -122,7 +143,7 @@ def create_meeting_event(
     except Exception as e:
         text = str(e).lower()
         if "invalid_grant" in text or "unauthorized" in text:
-            raise ExpectedError(f"Google Calendar auth failed: {e}") from e
+            raise ExpectedError(f"Google Calendar auth failed — reconnect in Settings: {e}") from e
         raise TransientError(f"Google Calendar API error: {e}") from e
 
     return {

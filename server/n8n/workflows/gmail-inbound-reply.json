@@ -12,8 +12,7 @@
       "name": "Gmail Trigger",
       "type": "n8n-nodes-base.gmailTrigger",
       "typeVersion": 1.1,
-      "position": [240, 300],
-      "credentials": { "gmailOAuth2": { "id": "CONFIGURE_ME", "name": "Gmail account" } }
+      "position": [240, 300]
     },
     {
       "parameters": {
@@ -27,7 +26,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ thread_id: $json.threadId || '', from_email: ($json.from && $json.from.value && $json.from.value[0] && $json.from.value[0].address) || ($json.from && $json.from.address) || '', raw_body: $json.textPlain || $json.snippet || $json.textHtml || $json.text || '' }) }}"
+        "jsonBody": "={{ JSON.stringify({ user_id: 0, thread_id: $json.threadId || '', from_email: ($json.from && $json.from.value && $json.from.value[0] && $json.from.value[0].address) || ($json.from && $json.from.address) || '', raw_body: $json.textPlain || $json.snippet || $json.textHtml || $json.text || '' }) }}"
       },
       "id": "handle-reply",
       "name": "Handle Reply",
@@ -47,8 +46,7 @@
       "name": "Send Gmail Reply",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [720, 300],
-      "credentials": { "gmailOAuth2": { "id": "CONFIGURE_ME", "name": "Gmail account" } }
+      "position": [720, 300]
     }
   ],
   "connections": {

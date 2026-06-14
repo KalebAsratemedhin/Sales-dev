@@ -4,7 +4,7 @@ import django.db.models.deletion
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("core", "0006_emailthread_user_id"),
+        ("outreach", "0006_emailthread_user_id"),
     ]
 
     operations = [
@@ -25,7 +25,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="meetings",
-                        to="core.emailthread",
+                        to="outreach.emailthread",
                     ),
                 ),
             ],

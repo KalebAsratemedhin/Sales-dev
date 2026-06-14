@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""One-time helper to obtain GOOGLE_CALENDAR_REFRESH_TOKEN. Run locally, not in Docker."""
+"""Legacy local helper — prefer connecting Google Calendar in Settings (OAuth UI).
+
+Prints GOOGLE_OAUTH_CLIENT_ID/SECRET for server/.env. Per-user refresh tokens are stored in DB.
+"""
 
 import os
 
@@ -17,10 +20,11 @@ def main():
 
     flow = InstalledAppFlow.from_client_secrets_file(client_file, SCOPES)
     creds = flow.run_local_server(port=0)
-    print("\nAdd to server/.env:\n")
+    print("\nAdd to server/.env (OAuth app credentials only):\n")
     print(f"GOOGLE_OAUTH_CLIENT_ID={creds.client_id}")
     print(f"GOOGLE_OAUTH_CLIENT_SECRET={creds.client_secret}")
-    print(f"GOOGLE_CALENDAR_REFRESH_TOKEN={creds.refresh_token}")
+    print("GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/settings/google-calendar-callback")
+    print("\nThen each user connects Calendar in Settings → Connect Google Calendar.")
 
 
 if __name__ == "__main__":

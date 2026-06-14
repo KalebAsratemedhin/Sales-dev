@@ -107,9 +107,10 @@ services:
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
       GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
-      GOOGLE_CALENDAR_REFRESH_TOKEN: ${GOOGLE_CALENDAR_REFRESH_TOKEN:-}
-      GOOGLE_CALENDAR_ID: ${GOOGLE_CALENDAR_ID:-primary}
-      DEFAULT_TIMEZONE: ${DEFAULT_TIMEZONE:-UTC}
+      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-http://localhost:3000/settings/google-calendar-callback}
+      GOOGLE_OAUTH_GMAIL_REDIRECT_URI: ${GOOGLE_OAUTH_GMAIL_REDIRECT_URI:-http://localhost:3000/settings/gmail-callback}
+      N8N_API_URL: ${N8N_API_URL:-http://n8n:5678}
+      N8N_API_KEY: ${N8N_API_KEY:-}
       FOLLOWUP_DAYS: ${FOLLOWUP_DAYS:-3}
       # Docker service names so n8n (and nginx) can call outreach internally
       ALLOWED_HOSTS: localhost,127.0.0.1,outreach,nginx,n8n
@@ -119,6 +120,8 @@ services:
       redis:
         condition: service_healthy
       leads:
+        condition: service_started
+      n8n:
         condition: service_started
     expose:
       - "8003"

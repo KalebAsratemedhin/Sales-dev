@@ -9,6 +9,7 @@ COPY outreach/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 COPY outreach/. .
 COPY common ./common
+COPY n8n/workflows ./n8n/workflows
 
 COPY outreach/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

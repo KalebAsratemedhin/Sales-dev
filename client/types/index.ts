@@ -3,7 +3,42 @@ export interface OutreachConfig {
   calendly_scheduling_url: string;
   product_docs_path: string;
   chroma_collection_name: string;
+  default_timezone: string;
+  default_meeting_duration_minutes: number;
   updated_at: string;
+}
+
+export interface GoogleCalendarStatus {
+  connected: boolean;
+  oauth_app_configured: boolean;
+  google_email?: string;
+  calendar_id?: string;
+  timezone?: string;
+  meeting_duration_minutes?: number;
+  connected_at?: string | null;
+}
+
+export interface GoogleCalendarAuthUrl {
+  url: string;
+  state: string;
+}
+
+export interface GmailStatus {
+  connected: boolean;
+  oauth_app_configured: boolean;
+  google_email?: string;
+  n8n_configured?: boolean;
+  n8n_synced?: boolean;
+  n8n_credential_id?: string;
+  n8n_workflow_id?: string;
+  n8n_sync_error?: string;
+  connected_at?: string | null;
+  n8n_synced_at?: string | null;
+}
+
+export interface GmailAuthUrl {
+  url: string;
+  state: string;
 }
 
 export interface UserProfile {

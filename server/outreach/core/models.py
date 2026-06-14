@@ -39,6 +39,8 @@ class OutreachConfig(models.Model):
     calendly_scheduling_url = models.CharField(max_length=512, blank=True)
     product_docs_path = models.CharField(max_length=512, blank=True)
     chroma_collection_name = models.CharField(max_length=128, blank=True, default="product_docs")
+    default_timezone = models.CharField(max_length=64, blank=True, default="UTC")
+    default_meeting_duration_minutes = models.PositiveIntegerField(default=30)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -67,3 +69,40 @@ class ScheduledMeeting(models.Model):
 
     def __str__(self):
         return f"ScheduledMeeting lead_id={self.lead_id} start={self.start_at}"
+
+
+class GoogleCalendarConnection(models.Model):
+    user_id = models.BigIntegerField(unique=True, db_index=True)
+    refresh_token = models.TextField(blank=True, default="")
+    access_token = models.TextField(blank=True, default="")
+    expires_at = models.DateTimeField(null=True, blank=True)
+    scope = models.TextField(blank=True, default="")
+    google_email = models.EmailField(blank=True, default="")
+    calendar_id = models.CharField(max_length=255, blank=True, default="primary")
+    timezone = models.CharField(max_length=64, blank=True, default="")
+    meeting_duration_minutes = models.PositiveIntegerField(null=True, blank=True)
+    oauth_state = models.CharField(max_length=64, blank=True, default="")
+    connected_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"GoogleCalendarConnection user_id={self.user_id}"
+
+
+class GmailConnection(models.Model):
+    user_id = models.BigIntegerField(unique=True, db_index=True)
+    refresh_token = models.TextField(blank=True, default="")
+    access_token = models.TextField(blank=True, default="")
+    expires_at = models.DateTimeField(null=True, blank=True)
+    scope = models.TextField(blank=True, default="")
+    google_email = models.EmailField(blank=True, default="")
+    oauth_state = models.CharField(max_length=64, blank=True, default="")
+    n8n_credential_id = models.CharField(max_length=64, blank=True, default="")
+    n8n_workflow_id = models.CharField(max_length=64, blank=True, default="")
+    n8n_sync_error = models.TextField(blank=True, default="")
+    n8n_synced_at = models.DateTimeField(null=True, blank=True)
+    connected_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"GmailConnection user_id={self.user_id}"

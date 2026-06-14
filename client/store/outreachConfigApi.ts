@@ -17,7 +17,17 @@ export const outreachConfigApi = createApi({
     }),
     updateConfig: builder.mutation<
       OutreachConfig,
-      Partial<Pick<OutreachConfig, "linkedin_url" | "calendly_scheduling_url" | "product_docs_path" | "chroma_collection_name">>
+      Partial<
+        Pick<
+          OutreachConfig,
+          | "linkedin_url"
+          | "calendly_scheduling_url"
+          | "product_docs_path"
+          | "chroma_collection_name"
+          | "default_timezone"
+          | "default_meeting_duration_minutes"
+        >
+      >
     >({
       query: (body) => ({
         url: "/config/",

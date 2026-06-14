@@ -1,38 +1,51 @@
 # n8n workflows
 
-Import JSON files from `workflows/` via n8n UI (**Settings → Import workflow**).
+Workflows under `workflows/` are **templates**. The outreach service provisions per-user Gmail inbound workflows automatically when a user connects Gmail in SalesMind Settings.
 
-| Workflow | Purpose |
+| Template | Purpose |
 |----------|---------|
-| `gmail-inbound-reply.json` | Poll Gmail for unread replies → `POST /api/outreach/handle-reply/` → send AI draft via **Gmail** |
-| `daily-followups.json` | Daily schedule → `POST /api/outreach/run-followups/` |
+| `gmail-inbound-reply.json` | Poll Gmail for unread replies → `POST /api/outreach/handle-reply/` → send AI draft via Gmail |
+| `daily-followups.json` | Daily schedule → `POST /api/outreach/run-followups/` (import once in n8n UI) |
 
-## Setup
+## Gmail inbound (Settings → Connect Gmail)
 
 1. Start stack: `docker compose up` from `server/`.
-2. Open n8n at http://localhost:5678 (default `admin` / `changeme`).
-3. **Gmail OAuth (required for inbound workflow):**
-   - Google Cloud Console → enable **Gmail API** → OAuth consent screen → create OAuth client (Web application).
-   - Authorized redirect URI: `http://localhost:5678/rest/oauth2-credential/callback`
-   - In n8n: **Credentials → Add → Gmail OAuth2** → paste Client ID / Secret → **Connect my account**.
-   - Open **SalesMind — Gmail Inbound Reply** → assign that credential on **both** Gmail nodes (Trigger + Send).
-   - Use the **same Gmail account** as `GMAIL_SENDER` in `server/.env` (outreach sends via SMTP from that inbox; n8n must read replies there).
-4. **Activate** the workflow (toggle on). Import/publish alone is not enough.
-5. Set n8n env `LEADS_SERVICE_INTERNAL_SECRET` for the follow-up workflow (or hardcode in the HTTP node for local dev: `dev-internal-secret`).
+2. **Google Cloud Console** (same OAuth client as Calendar):
+   - Enable **Gmail API**
+   - Add authorized redirect URIs:
+     - `http://localhost:3000/settings/gmail-callback`
+     - `http://localhost:3000/settings/google-calendar-callback`
+3. **server/.env**:
+   - `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET`
+   - `N8N_API_KEY` — create in n8n: **Settings → API → Create API key** (credential + workflow scopes)
+4. In SalesMind: **Settings → Connect Gmail**. Outreach will:
+   - Store OAuth tokens in Postgres (`GmailConnection`, per user)
+   - Create an n8n `gmailOAuth2` credential for that user
+   - Create and **activate** a workflow: `SalesMind — Gmail Inbound Reply (user {id})`
+5. Use the **same Gmail account** as `GMAIL_SENDER` in `server/.env` if outreach SMTP sends from that inbox.
 
-### Troubleshooting inbound replies
+If connect fails after Google sign-in, check Settings for the n8n error or verify `N8N_API_KEY` and restart outreach.
+
+## Follow-ups workflow
+
+1. Import `daily-followups.json` in n8n (**Settings → Import workflow**).
+2. Set `LEADS_SERVICE_INTERNAL_SECRET` in the HTTP node (or use `dev-internal-secret` for local dev).
+3. Activate the workflow in n8n.
+
+## Troubleshooting
 
 | Symptom | Likely cause |
 |---------|----------------|
-| n8n logs: `problem in 'Gmail Trigger' ... 'undefined'` | Gmail OAuth not connected on the trigger node |
-| No n8n executions when a lead replies | Workflow inactive, wrong Gmail account, or reply already **read** (trigger filters `unread` only) |
-| Execution runs but Handle Reply fails with `JSON parameter needs to be valid JSON` | Re-import `gmail-inbound-reply.json` — Handle Reply must use `JSON.stringify(...)` for the body |
-| Execution runs but Handle Reply fails | Re-import workflow after URL fix; outreach must allow Docker hostnames (`ALLOWED_HOSTS` in compose) |
-| Reply in Gmail but empty SalesMind inbox | `handle-reply` could not match thread — `from_email` must match the lead's `to_email` on the thread |
+| Connect Gmail fails immediately | `N8N_API_KEY` missing — set in `server/.env` and restart outreach |
+| Google sign-in works but connect fails | n8n credential schema mismatch — rebuild outreach; use **Sync to n8n** after updating |
+| Settings shows n8n sync error | Click **Sync to n8n** after fixing API key |
+| No n8n executions when a lead replies | Per-user workflow inactive, wrong Gmail account, or reply already **read** |
+| Reply in Gmail but empty SalesMind inbox | `handle-reply` could not match thread — `from_email` must match the lead's `to_email` |
 
-**Note:** Sending from the SalesMind **Inbox UI** goes through the outreach API directly (SMTP). That path does **not** use n8n and will not appear in n8n executions.
+**Note:** Sending from the SalesMind **Inbox UI** uses outreach SMTP directly and does not go through n8n.
 
 ## URLs (Docker network)
 
 - Outreach: `http://outreach:8003`
+- n8n API: `http://n8n:5678`
 - Via host/nginx: `http://localhost:8080`

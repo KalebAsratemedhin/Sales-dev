@@ -59,12 +59,13 @@ class SchedulingService:
         if not decision.ready_to_book or not decision.start_iso.strip():
             return result
 
-        if not calendar_configured():
+        if not calendar_configured(thread.user_id or 0):
             logger.warning("Lead ready to book but Google Calendar is not configured")
             return result
 
         try:
             event = create_meeting_event(
+                user_id=thread.user_id or 0,
                 title=decision.meeting_title
                 or f"Call with {lead.get('name') or thread.name or thread.to_email}",
                 start_iso=decision.start_iso,
@@ -128,9 +129,10 @@ class SchedulingService:
         messages = [m for m in messages if m]
 
         if start_iso:
-            if not calendar_configured():
+            if not calendar_configured(thread.user_id or 0):
                 raise ExpectedError("Google Calendar is not configured")
             event = create_meeting_event(
+                user_id=thread.user_id or 0,
                 title=title or f"Call with {lead['name'] or lead['email']}",
                 start_iso=start_iso,
                 duration_minutes=duration_minutes,

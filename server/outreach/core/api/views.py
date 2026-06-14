@@ -21,6 +21,8 @@ def _config_to_dict(config):
         "calendly_scheduling_url": config.calendly_scheduling_url or "",
         "product_docs_path": config.product_docs_path or "",
         "chroma_collection_name": config.chroma_collection_name or "product_docs",
+        "default_timezone": config.default_timezone or "UTC",
+        "default_meeting_duration_minutes": config.default_meeting_duration_minutes or 30,
         "updated_at": config.updated_at.isoformat() if config.updated_at else "",
     }
 
@@ -32,11 +34,27 @@ def config_detail(request):
     config = OutreachConfig.get_singleton()
     if request.method == "PATCH":
         data = request.data or {}
-        allowed = ("linkedin_url", "calendly_scheduling_url", "product_docs_path", "chroma_collection_name")
+        allowed = (
+            "linkedin_url",
+            "calendly_scheduling_url",
+            "product_docs_path",
+            "chroma_collection_name",
+            "default_timezone",
+            "default_meeting_duration_minutes",
+        )
         for key in allowed:
             if key in data and data[key] is not None:
-                val = str(data[key]).strip()
-                setattr(config, key, val[:512] if key != "chroma_collection_name" else val[:128])
+                if key == "default_meeting_duration_minutes":
+                    try:
+                        setattr(config, key, max(15, min(int(data[key]), 180)))
+                    except (TypeError, ValueError):
+                        pass
+                elif key == "chroma_collection_name":
+                    setattr(config, key, str(data[key]).strip()[:128])
+                elif key == "default_timezone":
+                    setattr(config, key, str(data[key]).strip()[:64])
+                else:
+                    setattr(config, key, str(data[key]).strip()[:512])
         config.save()
     return Response(_config_to_dict(config))
 
