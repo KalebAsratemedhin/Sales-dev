@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from core.email.reply_body import strip_quoted_reply
 from core.exceptions import ExpectedError, TransientError
 from core.models import EmailThread, SentEmail
 from core.services.outreach_email import send_email
@@ -13,8 +14,14 @@ from core.services.inbox import InboxService
 from core.services.scheduling import SchedulingService
 
 
+def _display_body(body: str, direction: str = "") -> str:
+    if direction == SentEmail.Direction.INBOUND:
+        return strip_quoted_reply(body) or (body or "").strip()
+    return (body or "").strip()
+
+
 def _preview(body: str, limit: int = 160) -> str:
-    text = (body or "").replace("\n", " ").strip()
+    text = _display_body(body).replace("\n", " ").strip()
     return text[:limit] + ("…" if len(text) > limit else "")
 
 
@@ -42,7 +49,7 @@ def _message_dict(email: SentEmail) -> dict:
         "id": email.id,
         "thread_id": email.thread_id,
         "direction": email.direction,
-        "body": email.body or "",
+        "body": _display_body(email.body or "", email.direction),
         "sent_at": email.sent_at.isoformat(),
         "message_id": email.message_id or "",
     }
@@ -124,7 +131,7 @@ def thread_draft_reply(request, thread_id: int):
     except ExpectedError as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    return Response({"body": result.get("reply_body") or ""})
+    return Response({"body": result.get("body") or ""})
 
 
 @api_view(["POST"])
@@ -148,7 +155,13 @@ def thread_send_reply(request, thread_id: int):
         subject = f"Re: {subject}"
 
     try:
-        message_id, gmail_thread_id, formatted_body = send_email(to_email, subject, body)
+        message_id, gmail_thread_id, formatted_body = send_email(
+            to_email,
+            subject,
+            body,
+            user_id=thread.user_id or request.user.id,
+            gmail_thread_id=thread.gmail_thread_id or "",
+        )
     except ExpectedError as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except TransientError as e:

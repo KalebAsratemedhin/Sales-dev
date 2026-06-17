@@ -76,8 +76,8 @@ export function LeadTable({
   }
 
   return (
-    <div className="bg-white/5 dark:bg-background/40 border border-primary/10 rounded-xl overflow-hidden shadow-2xl shadow-primary/5">
-      <table className="w-full text-left border-collapse">
+    <div className="bg-white/5 dark:bg-background/40 border border-primary/10 rounded-xl overflow-hidden shadow-2xl shadow-primary/5 overflow-x-auto">
+      <table className="w-full min-w-[720px] text-left border-collapse">
         <thead className="bg-primary/5 border-b border-primary/10 text-[11px] uppercase tracking-wider font-bold text-slate-500">
           <tr>
             

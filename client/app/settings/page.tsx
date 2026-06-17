@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   useGetProductDocsQuery,
   useGetProfilePicQuery,
@@ -13,14 +13,11 @@ import {
   useUploadProductDocsMutation,
 } from "@/store/authApi";
 import {
-  useDisconnectCalendarMutation,
-  useDisconnectGmailMutation,
-  useGetCalendarStatusQuery,
-  useGetGmailStatusQuery,
-  useLazyGetCalendarAuthUrlQuery,
-  useLazyGetGmailAuthUrlQuery,
-  useSyncGmailN8nMutation,
-  useUpdateCalendarSettingsMutation,
+  useDisconnectGoogleMutation,
+  useGetGoogleStatusQuery,
+  useLazyGetGoogleAuthUrlQuery,
+  useSyncGoogleN8nMutation,
+  useUpdateGoogleSettingsMutation,
 } from "@/store/outreachApi";
 import { useGetConfigQuery, useUpdateConfigMutation } from "@/store/outreachConfigApi";
 import type { ProductDoc } from "@/types";
@@ -32,28 +29,27 @@ import { ScrollArea } from "@/components/ui/ScrollArea";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/use-toast";
 import { PersonaManager } from "@/components/features/PersonaManager";
-import { GOOGLE_CALENDAR_OAUTH_STATE_KEY } from "@/lib/googleCalendar";
-import { GOOGLE_GMAIL_OAUTH_STATE_KEY } from "@/lib/googleGmail";
+import { Pagination } from "@/components/ui/Pagination";
+import { DEFAULT_PAGE_SIZE, paginate } from "@/lib/pagination";
+import { GOOGLE_OAUTH_STATE_KEY, GOOGLE_OAUTH_TOAST_KEY } from "@/lib/googleOAuth";
 
 export default function SettingsPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { data: profile, isLoading: profileLoading } = useGetProfileQuery();
   const { data: settings, isLoading: settingsLoading } = useGetSettingsQuery();
   const { data: outreachConfig, isLoading: configLoading } = useGetConfigQuery();
-  const { data: calendarStatus, isLoading: calendarLoading } = useGetCalendarStatusQuery();
-  const { data: gmailStatus, isLoading: gmailLoading } = useGetGmailStatusQuery();
+  const { data: googleStatus, isLoading: googleLoading } = useGetGoogleStatusQuery();
   const { data: docsData, isLoading: docsLoading } = useGetProductDocsQuery();
 
   const [updateProfile, { isLoading: isSavingProfile }] = useUpdateProfileMutation();
   const [updateSettings, { isLoading: isSavingSettings }] = useUpdateSettingsMutation();
   const [updateOutreachConfig, { isLoading: isSavingOutreachConfig }] = useUpdateConfigMutation();
   const [uploadProductDocs, { isLoading: isUploadingDocs }] = useUploadProductDocsMutation();
-  const [fetchCalendarAuthUrl] = useLazyGetCalendarAuthUrlQuery();
-  const [fetchGmailAuthUrl] = useLazyGetGmailAuthUrlQuery();
-  const [disconnectCalendar, { isLoading: isDisconnecting }] = useDisconnectCalendarMutation();
-  const [disconnectGmail, { isLoading: isDisconnectingGmail }] = useDisconnectGmailMutation();
-  const [syncGmailN8n, { isLoading: isSyncingGmail }] = useSyncGmailN8nMutation();
-  const [updateCalendarSettings, { isLoading: isSavingCalendar }] = useUpdateCalendarSettingsMutation();
+  const [fetchGoogleAuthUrl] = useLazyGetGoogleAuthUrlQuery();
+  const [disconnectGoogle, { isLoading: isDisconnecting }] = useDisconnectGoogleMutation();
+  const [syncGoogleN8n, { isLoading: isSyncingN8n }] = useSyncGoogleN8nMutation();
+  const [updateGoogleSettings, { isLoading: isSavingGoogleSettings }] = useUpdateGoogleSettingsMutation();
   const { data: profilePicBlob } = useGetProfilePicQuery(undefined, { skip: !profile?.profile_pic_url });
   const [fetchProductDocFile] = useLazyGetProductDocFileQuery();
 
@@ -70,6 +66,7 @@ export default function SettingsPage() {
   const [calendarDuration, setCalendarDuration] = useState("30");
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [docsPage, setDocsPage] = useState(1);
 
   useEffect(() => {
     if (!profile) return;
@@ -88,42 +85,40 @@ export default function SettingsPage() {
   }, [outreachConfig]);
 
   useEffect(() => {
-    if (!calendarStatus?.connected) return;
-    setCalendarId(calendarStatus.calendar_id ?? "primary");
-    setCalendarTimezone(calendarStatus.timezone ?? "");
-    setCalendarDuration(String(calendarStatus.meeting_duration_minutes ?? 30));
-  }, [calendarStatus]);
+    if (!googleStatus?.connected) return;
+    setCalendarId(googleStatus.calendar_id ?? "primary");
+    setCalendarTimezone(googleStatus.timezone ?? "");
+    setCalendarDuration(String(googleStatus.meeting_duration_minutes ?? 30));
+  }, [googleStatus]);
 
   useEffect(() => {
-    const calendar = searchParams.get("calendar");
-    if (calendar === "connected") {
-      toast({ title: "Google Calendar connected", description: "You can now book meetings from inbox replies." });
-    } else if (calendar === "error") {
-      toast({
-        title: "Google Calendar connection failed",
-        description: "Try again or check OAuth redirect URI in Google Cloud Console.",
-        variant: "destructive",
-      });
+    const google = searchParams.get("google");
+    if (!google) return;
+
+    const toastKey = `${GOOGLE_OAUTH_TOAST_KEY}:${google}`;
+    if (!sessionStorage.getItem(toastKey)) {
+      sessionStorage.setItem(toastKey, "1");
+      if (google === "connected") {
+        toast({
+          id: "google-oauth",
+          title: "Google connected",
+          description: "Gmail, Calendar, and inbound reply workflow are ready.",
+        });
+      } else if (google === "error") {
+        toast({
+          id: "google-oauth",
+          title: "Google connection failed",
+          description: "Try again or check OAuth redirect URI in Google Cloud Console.",
+          variant: "destructive",
+        });
+      }
     }
 
-    const gmail = searchParams.get("gmail");
-    if (gmail === "connected") {
-      toast({
-        title: "Gmail connected",
-        description: gmailStatus?.n8n_synced
-          ? "Inbound reply workflow is active in n8n."
-          : "Gmail connected. Sync n8n if the workflow did not provision automatically.",
-      });
-    } else if (gmail === "error") {
-      toast({
-        title: "Gmail connection failed",
-        description: "Try again or check OAuth redirect URI in Google Cloud Console.",
-        variant: "destructive",
-      });
-    }
-  }, [searchParams, gmailStatus?.n8n_synced]);
+    router.replace("/settings", { scroll: false });
+  }, [searchParams, router]);
 
   const docs: ProductDoc[] = docsData?.items ?? [];
+  const pagedDocs = useMemo(() => paginate(docs, docsPage, DEFAULT_PAGE_SIZE), [docs, docsPage]);
 
   useEffect(() => {
     if (!profilePicBlob) return;
@@ -178,32 +173,34 @@ export default function SettingsPage() {
     }
   };
 
-  const handleConnectGmail = async () => {
+  const handleConnectGoogle = async () => {
     try {
-      const payload = await fetchGmailAuthUrl().unwrap();
-      sessionStorage.setItem(GOOGLE_GMAIL_OAUTH_STATE_KEY, payload.state);
+      sessionStorage.removeItem(`${GOOGLE_OAUTH_TOAST_KEY}:connected`);
+      sessionStorage.removeItem(`${GOOGLE_OAUTH_TOAST_KEY}:error`);
+      const payload = await fetchGoogleAuthUrl().unwrap();
+      sessionStorage.setItem(GOOGLE_OAUTH_STATE_KEY, payload.state);
       window.location.href = payload.url;
     } catch {
       toast({
-        title: "Could not start Gmail sign-in",
-        description: "OAuth app credentials may be missing on the server.",
+        title: "Could not start Google sign-in",
+        description: "OAuth app credentials or n8n API key may be missing on the server.",
         variant: "destructive",
       });
     }
   };
 
-  const handleDisconnectGmail = async () => {
+  const handleDisconnectGoogle = async () => {
     try {
-      await disconnectGmail().unwrap();
-      toast({ title: "Gmail disconnected", description: "n8n workflow and credential were removed." });
+      await disconnectGoogle().unwrap();
+      toast({ title: "Google disconnected", description: "n8n workflow and credential were removed." });
     } catch {
-      toast({ title: "Gmail disconnect failed", variant: "destructive" });
+      toast({ title: "Google disconnect failed", variant: "destructive" });
     }
   };
 
-  const handleSyncGmailN8n = async () => {
+  const handleSyncGoogleN8n = async () => {
     try {
-      const result = await syncGmailN8n().unwrap();
+      const result = await syncGoogleN8n().unwrap();
       if (result.n8n_synced) {
         toast({ title: "n8n synced", description: "Gmail credential and inbound workflow are ready." });
       } else {
@@ -218,40 +215,17 @@ export default function SettingsPage() {
     }
   };
 
-  const handleConnectCalendar = async () => {
-    try {
-      const payload = await fetchCalendarAuthUrl().unwrap();
-      sessionStorage.setItem(GOOGLE_CALENDAR_OAUTH_STATE_KEY, payload.state);
-      window.location.href = payload.url;
-    } catch {
-      toast({
-        title: "Could not start Google sign-in",
-        description: "OAuth app credentials may be missing on the server.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDisconnectCalendar = async () => {
-    try {
-      await disconnectCalendar().unwrap();
-      toast({ title: "Google Calendar disconnected" });
-    } catch {
-      toast({ title: "Disconnect failed", variant: "destructive" });
-    }
-  };
-
-  const handleSaveCalendarSettings = async () => {
+  const handleSaveGoogleSettings = async () => {
     const duration = parseInt(calendarDuration, 10);
     try {
-      await updateCalendarSettings({
+      await updateGoogleSettings({
         calendar_id: calendarId.trim() || "primary",
         timezone: calendarTimezone.trim(),
         meeting_duration_minutes: Number.isFinite(duration) ? duration : 30,
       }).unwrap();
-      toast({ title: "Calendar settings saved" });
+      toast({ title: "Google settings saved" });
     } catch {
-      toast({ title: "Calendar settings update failed", variant: "destructive" });
+      toast({ title: "Google settings update failed", variant: "destructive" });
     }
   };
 
@@ -277,7 +251,7 @@ export default function SettingsPage() {
     }
   };
 
-  const isLoading = profileLoading || settingsLoading || configLoading || calendarLoading || gmailLoading || docsLoading;
+  const isLoading = profileLoading || settingsLoading || configLoading || googleLoading || docsLoading;
   if (isLoading) {
     return (
       <ScrollArea className="flex-1">
@@ -307,12 +281,12 @@ export default function SettingsPage() {
 
   return (
     <ScrollArea className="flex-1">
-      <div className="p-8 bg-background">
+      <div className="p-4 sm:p-6 lg:p-8 bg-background">
         <div className="max-w-5xl mx-auto flex flex-col gap-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h1 className="text-slate-100 text-4xl font-black leading-tight tracking-tight">Settings</h1>
-              <p className="text-slate-500 text-lg mt-2">Manage your profile, config, and product documentation.</p>
+              <h1 className="text-slate-100 text-2xl sm:text-4xl font-black leading-tight tracking-tight">Settings</h1>
+              <p className="text-slate-500 text-base sm:text-lg mt-2">Manage your profile, config, and product documentation.</p>
             </div>
           </div>
 
@@ -416,83 +390,41 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2 text-primary font-bold text-xs tracking-wider uppercase">
-                <span className="material-symbols-outlined text-sm">mail</span>
-                <span>Gmail (n8n inbound)</span>
+                <span className="material-symbols-outlined text-sm">account_circle</span>
+                <span>Google</span>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {!gmailStatus?.oauth_app_configured ? (
+              {!googleStatus?.oauth_app_configured ? (
                 <p className="text-slate-500 text-sm">
                   Server OAuth is not configured. Set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET in
                   server/.env.
                 </p>
-              ) : !gmailStatus?.n8n_configured ? (
+              ) : !googleStatus?.n8n_configured ? (
                 <p className="text-slate-500 text-sm">
                   n8n API is not configured. Create an API key in n8n (Settings → API) and set N8N_API_KEY in
                   server/.env, then restart outreach.
                 </p>
-              ) : gmailStatus?.connected ? (
+              ) : googleStatus?.connected ? (
                 <>
                   <div className="text-slate-300 text-sm">
-                    Connected as <span className="text-slate-100 font-medium">{gmailStatus.google_email}</span>
+                    Connected as <span className="text-slate-100 font-medium">{googleStatus.google_email}</span>
                   </div>
                   <div className="text-slate-500 text-sm space-y-1">
                     <div>
-                      n8n:{" "}
-                      {gmailStatus.n8n_synced ? (
+                      Gmail send + Calendar: <span className="text-primary">active</span>
+                    </div>
+                    <div>
+                      n8n inbound:{" "}
+                      {googleStatus.n8n_synced ? (
                         <span className="text-primary">workflow active</span>
-                      ) : gmailStatus.n8n_configured ? (
-                        <span className="text-amber-400">connected but not synced</span>
                       ) : (
-                        <span className="text-amber-400">API key not configured</span>
+                        <span className="text-amber-400">connected but not synced</span>
                       )}
                     </div>
-                    {gmailStatus.n8n_sync_error ? (
-                      <div className="text-red-400 text-xs">{gmailStatus.n8n_sync_error}</div>
+                    {googleStatus.n8n_sync_error ? (
+                      <div className="text-red-400 text-xs">{googleStatus.n8n_sync_error}</div>
                     ) : null}
-                  </div>
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <Button variant="ghost" onClick={handleDisconnectGmail} disabled={isDisconnectingGmail}>
-                      {isDisconnectingGmail ? "Disconnecting…" : "Disconnect"}
-                    </Button>
-                    {gmailStatus.n8n_configured && !gmailStatus.n8n_synced ? (
-                      <Button onClick={handleSyncGmailN8n} disabled={isSyncingGmail}>
-                        {isSyncingGmail ? "Syncing…" : "Sync to n8n"}
-                      </Button>
-                    ) : null}
-                  </div>
-                </>
-              ) : (
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <p className="text-slate-500 text-sm">
-                    Connect Gmail to poll unread replies via n8n and auto-draft responses. Each user gets their own n8n
-                    workflow.
-                  </p>
-                  <Button onClick={handleConnectGmail} disabled={!gmailStatus?.n8n_configured}>
-                    Connect Gmail
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2 text-primary font-bold text-xs tracking-wider uppercase">
-                <span className="material-symbols-outlined text-sm">event</span>
-                <span>Google Calendar</span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!calendarStatus?.oauth_app_configured ? (
-                <p className="text-slate-500 text-sm">
-                  Server OAuth is not configured. Set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET in
-                  server/.env.
-                </p>
-              ) : calendarStatus?.connected ? (
-                <>
-                  <div className="text-slate-300 text-sm">
-                    Connected as <span className="text-slate-100 font-medium">{calendarStatus.google_email}</span>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
@@ -526,21 +458,28 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <div className="flex flex-wrap justify-end gap-2">
-                    <Button variant="ghost" onClick={handleDisconnectCalendar} disabled={isDisconnecting}>
+                    <Button variant="ghost" onClick={handleDisconnectGoogle} disabled={isDisconnecting}>
                       {isDisconnecting ? "Disconnecting…" : "Disconnect"}
                     </Button>
-                    <Button onClick={handleSaveCalendarSettings} disabled={isSavingCalendar}>
-                      {isSavingCalendar ? "Saving…" : "Save Calendar Settings"}
+                    {!googleStatus.n8n_synced ? (
+                      <Button onClick={handleSyncGoogleN8n} disabled={isSyncingN8n}>
+                        {isSyncingN8n ? "Syncing…" : "Sync to n8n"}
+                      </Button>
+                    ) : null}
+                    <Button onClick={handleSaveGoogleSettings} disabled={isSavingGoogleSettings}>
+                      {isSavingGoogleSettings ? "Saving…" : "Save Settings"}
                     </Button>
                   </div>
                 </>
               ) : (
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <p className="text-slate-500 text-sm">
-                    Connect your Google account to let the scheduling agent create calendar events when leads confirm a
-                    time.
+                    Connect Google once for Gmail send, inbound reply polling via n8n, and Calendar booking from inbox
+                    replies.
                   </p>
-                  <Button onClick={handleConnectCalendar}>Connect Google Calendar</Button>
+                  <Button onClick={handleConnectGoogle} disabled={!googleStatus?.n8n_configured}>
+                    Connect Google
+                  </Button>
                 </div>
               )}
             </CardContent>
@@ -579,19 +518,30 @@ export default function SettingsPage() {
                 {docs.length === 0 ? (
                   <div className="text-slate-500">No product docs uploaded yet.</div>
                 ) : (
-                  <div className="divide-y divide-primary/10">
-                    {docs.map((doc) => (
-                      <div key={doc.id} className="py-3 flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="text-slate-100 font-medium truncate">{doc.filename}</div>
-                          <div className="text-slate-500 text-xs">{new Date(doc.uploaded_at).toLocaleString()}</div>
+                  <>
+                    <div className="divide-y divide-primary/10">
+                      {pagedDocs.items.map((doc) => (
+                        <div key={doc.id} className="py-3 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-slate-100 font-medium truncate">{doc.filename}</div>
+                            <div className="text-slate-500 text-xs">{new Date(doc.uploaded_at).toLocaleString()}</div>
+                          </div>
+                          <Button variant="ghost" onClick={() => viewProductDoc(doc.id)} className="text-primary font-bold whitespace-nowrap">
+                            View
+                          </Button>
                         </div>
-                        <Button variant="ghost" onClick={() => viewProductDoc(doc.id)} className="text-primary font-bold whitespace-nowrap">
-                          View
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                    <Pagination
+                      page={pagedDocs.currentPage}
+                      totalPages={pagedDocs.totalPages}
+                      total={pagedDocs.total}
+                      from={pagedDocs.from}
+                      to={pagedDocs.to}
+                      onPageChange={setDocsPage}
+                      label="files"
+                    />
+                  </>
                 )}
               </div>
             </CardContent>

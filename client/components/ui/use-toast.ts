@@ -1,11 +1,14 @@
 export type ToastVariant = "default" | "destructive";
 
 export type ToastOptions = {
+  id?: string;
   title: string;
   description?: string;
   variant?: ToastVariant;
   durationMs?: number;
 };
+
+const MAX_TOASTS = 3;
 
 export type ToastState = ToastOptions & {
   id: string;
@@ -39,7 +42,7 @@ export function dismiss(id: string) {
 }
 
 export function toast(options: ToastOptions) {
-  const id = makeId();
+  const id = options.id ?? makeId();
   const durationMs = options.durationMs ?? 5000;
 
   const nextToast: ToastState = {
@@ -50,7 +53,7 @@ export function toast(options: ToastOptions) {
     durationMs,
   };
 
-  toasts = [...toasts, nextToast];
+  toasts = [...toasts.filter((t) => t.id !== id), nextToast].slice(-MAX_TOASTS);
   notify();
 
   if (typeof window !== "undefined") {

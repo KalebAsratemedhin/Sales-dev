@@ -1,12 +1,13 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import type {
+  ActivityLogLine,
   EmailThreadDetail,
   EmailThreadSummary,
-  GmailAuthUrl,
-  GmailStatus,
-  GoogleCalendarAuthUrl,
-  GoogleCalendarStatus,
+  GoogleAuthUrl,
+  GoogleStatus,
   OutreachStats,
+  PaginatedResponse,
+  ScheduledMeeting,
 } from "@/types";
 import { getApiBase } from "@/lib/apiBase";
 import { createBaseQueryWithReauth } from "@/lib/baseQueryWithReauth";
@@ -17,11 +18,38 @@ const baseUrl = base ? `${base}/api/outreach` : "/api/outreach";
 export const outreachApi = createApi({
   reducerPath: "outreachApi",
   baseQuery: createBaseQueryWithReauth(baseUrl),
-  tagTypes: ["Threads", "Thread", "OutreachStats", "Calendar", "Gmail"],
+  tagTypes: ["Threads", "Thread", "OutreachStats", "Google", "Meetings", "Activity"],
   endpoints: (builder) => ({
     getStats: builder.query<OutreachStats, void>({
       query: () => "/stats/",
       providesTags: ["OutreachStats"],
+    }),
+    getMeetings: builder.query<
+      PaginatedResponse<ScheduledMeeting>,
+      { when?: "upcoming" | "past" | "all"; page?: number; page_size?: number } | void
+    >({
+      query: (arg) => ({
+        url: "/meetings/",
+        params: {
+          ...(arg?.when ? { when: arg.when } : {}),
+          ...(arg?.page ? { page: String(arg.page) } : {}),
+          ...(arg?.page_size ? { page_size: String(arg.page_size) } : {}),
+        },
+      }),
+      providesTags: ["Meetings"],
+    }),
+    getActivity: builder.query<
+      PaginatedResponse<ActivityLogLine>,
+      { page?: number; page_size?: number } | void
+    >({
+      query: (arg) => ({
+        url: "/activity/",
+        params: {
+          ...(arg?.page ? { page: String(arg.page) } : {}),
+          ...(arg?.page_size ? { page_size: String(arg.page_size) } : {}),
+        },
+      }),
+      providesTags: ["Activity"],
     }),
     getThreads: builder.query<EmailThreadSummary[], { filter?: string; lead_id?: number } | void>({
       query: (arg) => {
@@ -52,87 +80,64 @@ export const outreachApi = createApi({
         { type: "Thread", id: threadId },
         "Threads",
         "OutreachStats",
+        "Activity",
       ],
     }),
-    getCalendarStatus: builder.query<GoogleCalendarStatus, void>({
-      query: () => "/calendar/status/",
-      providesTags: ["Calendar"],
+    getGoogleStatus: builder.query<GoogleStatus, void>({
+      query: () => "/google/status/",
+      providesTags: ["Google"],
     }),
-    getCalendarAuthUrl: builder.query<GoogleCalendarAuthUrl, void>({
-      query: () => "/calendar/auth-url/",
+    getGoogleAuthUrl: builder.query<GoogleAuthUrl, void>({
+      query: () => "/google/auth-url/",
     }),
-    exchangeCalendarCode: builder.mutation<GoogleCalendarStatus, { code: string; state: string }>({
+    exchangeGoogleCode: builder.mutation<GoogleStatus, { code: string; state: string }>({
       query: (body) => ({
-        url: "/calendar/exchange/",
+        url: "/google/exchange/",
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Calendar"],
+      invalidatesTags: ["Google"],
     }),
-    disconnectCalendar: builder.mutation<{ connected: boolean; oauth_app_configured: boolean }, void>({
+    disconnectGoogle: builder.mutation<GoogleStatus, void>({
       query: () => ({
-        url: "/calendar/disconnect/",
+        url: "/google/disconnect/",
         method: "POST",
       }),
-      invalidatesTags: ["Calendar"],
+      invalidatesTags: ["Google"],
     }),
-    updateCalendarSettings: builder.mutation<
-      GoogleCalendarStatus,
-      Partial<Pick<GoogleCalendarStatus, "calendar_id" | "timezone" | "meeting_duration_minutes">>
+    updateGoogleSettings: builder.mutation<
+      GoogleStatus,
+      Partial<Pick<GoogleStatus, "calendar_id" | "timezone" | "meeting_duration_minutes">>
     >({
       query: (body) => ({
-        url: "/calendar/settings/",
+        url: "/google/settings/",
         method: "PATCH",
         body,
       }),
-      invalidatesTags: ["Calendar"],
+      invalidatesTags: ["Google"],
     }),
-    getGmailStatus: builder.query<GmailStatus, void>({
-      query: () => "/gmail/status/",
-      providesTags: ["Gmail"],
-    }),
-    getGmailAuthUrl: builder.query<GmailAuthUrl, void>({
-      query: () => "/gmail/auth-url/",
-    }),
-    exchangeGmailCode: builder.mutation<GmailStatus, { code: string; state: string }>({
-      query: (body) => ({
-        url: "/gmail/exchange/",
-        method: "POST",
-        body,
-      }),
-      invalidatesTags: ["Gmail"],
-    }),
-    disconnectGmail: builder.mutation<GmailStatus, void>({
+    syncGoogleN8n: builder.mutation<GoogleStatus, void>({
       query: () => ({
-        url: "/gmail/disconnect/",
+        url: "/google/sync-n8n/",
         method: "POST",
       }),
-      invalidatesTags: ["Gmail"],
-    }),
-    syncGmailN8n: builder.mutation<GmailStatus, void>({
-      query: () => ({
-        url: "/gmail/sync-n8n/",
-        method: "POST",
-      }),
-      invalidatesTags: ["Gmail"],
+      invalidatesTags: ["Google"],
     }),
   }),
 });
 
 export const {
   useGetStatsQuery,
+  useGetMeetingsQuery,
+  useGetActivityQuery,
   useGetThreadsQuery,
   useGetThreadQuery,
   useDraftReplyMutation,
   useSendReplyMutation,
-  useGetCalendarStatusQuery,
-  useLazyGetCalendarAuthUrlQuery,
-  useExchangeCalendarCodeMutation,
-  useDisconnectCalendarMutation,
-  useUpdateCalendarSettingsMutation,
-  useGetGmailStatusQuery,
-  useLazyGetGmailAuthUrlQuery,
-  useExchangeGmailCodeMutation,
-  useDisconnectGmailMutation,
-  useSyncGmailN8nMutation,
+  useGetGoogleStatusQuery,
+  useLazyGetGoogleAuthUrlQuery,
+  useExchangeGoogleCodeMutation,
+  useDisconnectGoogleMutation,
+  useUpdateGoogleSettingsMutation,
+  useSyncGoogleN8nMutation,
 } = outreachApi;

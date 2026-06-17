@@ -76,7 +76,13 @@ def send_followup_for_thread(thread_id: int) -> None:
     if not body:
         raise TransientError("draft_followup_email returned empty body")
 
-    message_id, _, formatted_body = send_email(to_email, subject, body)
+    message_id, _, formatted_body = send_email(
+        to_email,
+        subject,
+        body,
+        user_id=thread.user_id or 0,
+        gmail_thread_id=thread.gmail_thread_id or "",
+    )
 
     SentEmail.objects.create(
         thread=thread,

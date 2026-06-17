@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from core.exceptions import ExpectedError
-from core.models import GmailConnection
+from core.models import GoogleConnection
 from core.services import n8n_client
 
 logger = logging.getLogger("n8n_gmail_sync")
@@ -32,7 +32,7 @@ def _client_secret() -> str:
     return (os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET") or "").strip()
 
 
-def _credential_name(conn: GmailConnection) -> str:
+def _credential_name(conn: GoogleConnection) -> str:
     label = conn.google_email or f"user {conn.user_id}"
     return f"SalesMind Gmail — {label}"
 
@@ -48,7 +48,7 @@ def _find_workflow_id_by_name(name: str) -> str:
     return ""
 
 
-def _gmail_credential_data(conn: GmailConnection) -> dict:
+def _gmail_credential_data(conn: GoogleConnection) -> dict:
     expiry_date = int(datetime.now(timezone.utc).timestamp() * 1000) + 3600 * 1000
     if conn.expires_at:
         expiry_date = int(conn.expires_at.timestamp() * 1000)
@@ -101,7 +101,7 @@ def _load_workflow_template(user_id: int, credential_id: str, credential_name: s
     return workflow
 
 
-def _ensure_credential(conn: GmailConnection, cred_name: str, cred_data: dict) -> str:
+def _ensure_credential(conn: GoogleConnection, cred_name: str, cred_data: dict) -> str:
     credential_id = (conn.n8n_credential_id or "").strip()
     if credential_id:
         try:
@@ -121,7 +121,7 @@ def _ensure_credential(conn: GmailConnection, cred_name: str, cred_data: dict) -
     return credential_id
 
 
-def _ensure_workflow(conn: GmailConnection, *, credential_id: str, cred_name: str) -> str:
+def _ensure_workflow(conn: GoogleConnection, *, credential_id: str, cred_name: str) -> str:
     workflow_id = (conn.n8n_workflow_id or "").strip()
     workflow_name = _workflow_name(conn.user_id)
 
@@ -163,7 +163,7 @@ def _ensure_workflow(conn: GmailConnection, *, credential_id: str, cred_name: st
     return workflow_id
 
 
-def sync_gmail_to_n8n(conn: GmailConnection) -> GmailConnection:
+def sync_gmail_to_n8n(conn: GoogleConnection) -> GoogleConnection:
     """Push Gmail tokens to n8n and ensure a per-user inbound workflow exists."""
     if not conn.refresh_token:
         raise ExpectedError("Gmail is not connected")
@@ -202,7 +202,7 @@ def sync_gmail_to_n8n(conn: GmailConnection) -> GmailConnection:
     return conn
 
 
-def teardown_n8n_gmail(conn: GmailConnection) -> None:
+def teardown_n8n_gmail(conn: GoogleConnection) -> None:
     if not n8n_client.n8n_configured():
         return
 

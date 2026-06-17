@@ -8,35 +8,25 @@ export interface OutreachConfig {
   updated_at: string;
 }
 
-export interface GoogleCalendarStatus {
+export interface GoogleStatus {
   connected: boolean;
   oauth_app_configured: boolean;
   google_email?: string;
-  calendar_id?: string;
-  timezone?: string;
-  meeting_duration_minutes?: number;
-  connected_at?: string | null;
-}
-
-export interface GoogleCalendarAuthUrl {
-  url: string;
-  state: string;
-}
-
-export interface GmailStatus {
-  connected: boolean;
-  oauth_app_configured: boolean;
-  google_email?: string;
+  gmail_configured?: boolean;
+  calendar_configured?: boolean;
   n8n_configured?: boolean;
   n8n_synced?: boolean;
   n8n_credential_id?: string;
   n8n_workflow_id?: string;
   n8n_sync_error?: string;
+  calendar_id?: string;
+  timezone?: string;
+  meeting_duration_minutes?: number;
   connected_at?: string | null;
   n8n_synced_at?: string | null;
 }
 
-export interface GmailAuthUrl {
+export interface GoogleAuthUrl {
   url: string;
   state: string;
 }
@@ -130,12 +120,50 @@ export interface SentEmail {
   message_id: string;
 }
 
+export interface ScheduledMeeting {
+  id: number;
+  thread_id: number;
+  lead_id: number;
+  lead_name: string;
+  lead_email: string;
+  company_name: string;
+  title: string;
+  start_at: string;
+  duration_minutes: number;
+  html_link: string;
+  google_event_id: string;
+  created_at: string;
+}
+
 export interface EmailThreadDetail extends EmailThreadSummary {
   research_summary: string;
   pain_points: string[];
   use_cases: string[];
   gmail_thread_id: string;
   messages: SentEmail[];
+}
+
+export interface EmailActivityDay {
+  date: string;
+  label: string;
+  sent: number;
+  received: number;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface ActivityLogLine {
+  time: string;
+  action: "sent" | "received";
+  lead_id: number;
+  lead_name: string;
+  lead_email: string;
 }
 
 export interface OutreachStats {
@@ -145,7 +173,19 @@ export interface OutreachStats {
   outbound_today: number;
   inbound_today: number;
   unread_threads: number;
-  recent_logs: MonitorLogLine[];
+  meetings_upcoming: number;
+  meetings_past: number;
+  meetings_today: number;
+  next_meeting: {
+    id: number;
+    title: string;
+    start_at: string;
+    lead_name: string;
+    lead_email: string;
+    html_link: string;
+  } | null;
+  recent_logs: ActivityLogLine[];
+  email_activity_7d: EmailActivityDay[];
 }
 
 export interface MonitorLogLine {

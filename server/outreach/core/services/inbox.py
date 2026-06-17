@@ -2,7 +2,7 @@ from django.utils import timezone
 
 from agent.agent import handle_inbox_reply
 from core.email import finalize_email_body
-from core.exceptions import ExpectedError
+from core.email.reply_body import strip_quoted_reply
 from core.messaging.publish import publish_lead_status_update
 from core.models import EmailThread, SentEmail
 from core.rate_limit import rate_limit_llm_outreach
@@ -110,6 +110,10 @@ class InboxService:
         if not raw_body:
             raise ExpectedError("raw_body is required")
 
+        body = strip_quoted_reply(raw_body)
+        if not body:
+            body = raw_body.strip()
+
         thread = self._find_thread(thread_id=thread_id, from_email=from_email, lead_id=lead_id)
         if thread is None:
             raise ExpectedError("thread not found")
@@ -134,13 +138,13 @@ class InboxService:
 
         thread_messages = self.build_thread_messages(thread)
 
-        new_message = {"body": raw_body}
+        new_message = {"body": body}
 
         SentEmail.objects.create(
             thread=thread,
             message_id="",
             direction=SentEmail.Direction.INBOUND,
-            body=raw_body,
+            body=body,
         )
         thread.last_message_at = timezone.now()
         thread.save(update_fields=["last_message_at", "gmail_thread_id"])
@@ -149,11 +153,11 @@ class InboxService:
             publish_lead_status_update(thread.lead_id, "replied")
 
         sched_result = None
-        if _might_want_scheduling(raw_body):
+        if _might_want_scheduling(body):
             sched_result = SchedulingService().process_inbound(
                 thread=thread,
                 thread_messages=thread_messages,
-                latest_message=raw_body,
+                latest_message=body,
                 lead=lead,
             )
         if sched_result:

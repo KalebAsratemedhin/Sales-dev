@@ -10,14 +10,14 @@ import { leadsToCsv, downloadCsv } from "@/lib/csv";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 const PAGE_SIZE = 10;
+const HIDDEN_STATUSES = new Set(["meeting_booked", "follow_up_required"]);
+
 const STATUS_FILTERS = [
   { value: "", label: "All Leads", countLabel: true },
   { value: "new", label: "Cold", icon: "ac_unit" },
   { value: "researched", label: "Warm", icon: "wb_sunny" },
   { value: "emailed", label: "Contacted", icon: null },
   { value: "replied", label: "Hot", icon: "local_fire_department" },
-  { value: "meeting_booked", label: "Meeting", icon: "event" },
-  { value: "follow_up_required", label: "Follow-up required", countLabel: true },
 ] as const;
 
 const VALID_STATUS = new Set<string>(
@@ -73,24 +73,29 @@ function LeadsContent() {
     statusFilter ? { status: statusFilter } : undefined
   );
 
-  const totalCount = leads.length;
+  const visibleLeads = useMemo(
+    () => leads.filter((lead) => !HIDDEN_STATUSES.has(lead.status)),
+    [leads]
+  );
+
+  const totalCount = visibleLeads.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const pageLeads = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
-    return leads.slice(start, start + PAGE_SIZE);
-  }, [leads, page]);
+    return visibleLeads.slice(start, start + PAGE_SIZE);
+  }, [visibleLeads, page]);
 
   const handlePageChange = (p: number) => setPage(Math.max(1, Math.min(p, totalPages)));
 
   const handleExportCsv = () => {
-    const csv = leadsToCsv(leads);
+    const csv = leadsToCsv(visibleLeads);
     const name = statusFilter ? `leads-${statusFilter}.csv` : "leads.csv";
     downloadCsv(csv, name);
   };
 
   return (
     <ScrollArea className="flex-1">
-      <div className="p-8 bg-background">
+      <div className="p-4 sm:p-6 lg:p-8 bg-background">
         <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <div className="flex gap-2 text-xs font-medium text-slate-500 mb-2 uppercase tracking-widest">
@@ -109,7 +114,7 @@ function LeadsContent() {
             <button
               type="button"
               onClick={handleExportCsv}
-              disabled={isLoading || leads.length === 0}
+              disabled={isLoading || visibleLeads.length === 0}
               className="px-4 py-2 border border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary rounded text-sm font-bold flex items-center gap-2 transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
               <span className="material-symbols-outlined text-sm">download</span>

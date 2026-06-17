@@ -23,8 +23,8 @@ def main():
     print("\nAdd to server/.env (OAuth app credentials only):\n")
     print(f"GOOGLE_OAUTH_CLIENT_ID={creds.client_id}")
     print(f"GOOGLE_OAUTH_CLIENT_SECRET={creds.client_secret}")
-    print("GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/settings/google-calendar-callback")
-    print("\nThen each user connects Calendar in Settings → Connect Google Calendar.")
+    print("GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/settings/google-callback")
+    print("\nThen each user connects Google in Settings → Connect Google.")
 
 
 if __name__ == "__main__":

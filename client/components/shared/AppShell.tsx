@@ -10,8 +10,8 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/leads", label: "Leads", icon: "group" },
   { href: "/research", label: "Research", icon: "track_changes" },
-  { href: "/outreach", label: "Outreach", icon: "send" },
   { href: "/inbox", label: "Inbox", icon: "inbox" },
+  { href: "/meetings", label: "Meetings", icon: "event" },
   { href: "/settings", label: "Settings", icon: "settings" },
 ];
 
@@ -22,8 +22,8 @@ function getHeaderFromPath(pathname: string): { title: string; breadcrumb?: { hr
     return { title: "Lead Details", breadcrumb: { href: "/leads", label: "Leads" } };
   }
   if (pathname === "/research") return { title: "Research" };
-  if (pathname === "/outreach") return { title: "Outreach" };
   if (pathname === "/inbox") return { title: "Inbox & Replies" };
+  if (pathname === "/meetings") return { title: "Meetings" };
   if (pathname === "/settings") return { title: "Settings" };
   return { title: "SalesMind" };
 }
@@ -78,7 +78,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const avatarInitials = me ? initials(me.full_name ?? "", me.email ?? "") : "U";
 
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const avatarMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (!avatarMenuOpen) return;
@@ -94,6 +99,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [avatarMenuOpen]);
 
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setMobileNavOpen(false);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [mobileNavOpen]);
+
   const handleLogout = () => {
     clearTokens();
     setAvatarMenuOpen(false);
@@ -108,7 +122,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <aside className="w-64 border-r border-primary/10 bg-background flex flex-col shrink-0">
+      {mobileNavOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          aria-label="Close navigation"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      ) : null}
+
+      <aside
+        className={`fixed md:static inset-y-0 left-0 z-50 w-64 border-r border-primary/10 bg-background flex flex-col shrink-0 transform transition-transform duration-200 md:translate-x-0 ${
+          mobileNavOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
         <div className="p-6 flex items-center gap-3">
           <div className="size-10 bg-primary flex items-center justify-center rounded-lg">
             <span className="material-symbols-outlined text-primary-foreground text-2xl font-bold" aria-hidden>
@@ -150,12 +177,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
       </aside>
-      <div className="flex-1 flex flex-col overflow-hidden bg-background">
-        {/* Single shared header */}
-        <header className="h-16 border-b border-primary/10 flex items-center justify-between px-8 bg-background/80 backdrop-blur-md shrink-0">
-          <div className="flex items-center gap-4">
+      <div className="flex-1 flex flex-col overflow-hidden bg-background min-w-0">
+        <header className="h-16 border-b border-primary/10 flex items-center justify-between px-4 sm:px-6 lg:px-8 bg-background/80 backdrop-blur-md shrink-0 gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              className="md:hidden p-2 text-slate-500 hover:text-primary transition-colors shrink-0"
+              aria-label="Open navigation"
+              onClick={() => setMobileNavOpen(true)}
+            >
+              <span className="material-symbols-outlined">menu</span>
+            </button>
             {breadcrumb ? (
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-2 text-sm min-w-0">
                 <Link
                   href={breadcrumb.href}
                   className="text-slate-500 hover:text-primary transition-colors"
@@ -166,31 +200,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <span className="text-primary font-medium">{title}</span>
               </div>
             ) : (
-              <h2 className="text-xl font-bold tracking-tight text-slate-100">{title}</h2>
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-100 truncate">{title}</h2>
             )}
-            <div className="relative w-64 hidden sm:block">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">
-                search
-              </span>
-              <input
-                type="search"
-                className="w-full bg-primary/5 border border-primary/20 rounded-lg pl-10 pr-4 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-primary"
-                placeholder="Search..."
-                aria-label="Search"
-              />
-            </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             <button
               type="button"
-              className="p-2 text-slate-500 hover:text-primary transition-colors"
+              className="hidden sm:inline-flex p-2 text-slate-500 hover:text-primary transition-colors"
               aria-label="Notifications"
             >
               <span className="material-symbols-outlined">notifications</span>
             </button>
-            <div className="h-8 w-px bg-primary/10" />
-            <div className="flex items-center gap-3">
-              <div className="text-right">
+            <div className="hidden sm:block h-8 w-px bg-primary/10" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="text-right hidden sm:block">
                 <p className="text-xs font-bold leading-none text-slate-100 truncate">{displayName}</p>
                 <p className="text-[10px] text-primary truncate">{me?.email ?? "Sales"}</p>
               </div>

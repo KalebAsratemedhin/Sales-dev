@@ -1,56 +1,28 @@
 import logging
-import os
 from datetime import datetime, timedelta, timezone
 
 from core.exceptions import ExpectedError, TransientError
-from core.models import GoogleCalendarConnection, OutreachConfig
-from core.services.google_calendar_oauth import SCOPES, oauth_app_configured
+from core.models import GoogleConnection, OutreachConfig
+from core.services.google_oauth import SCOPES, get_credentials, is_connected, oauth_app_configured
 
 logger = logging.getLogger("google_calendar")
 
-TOKEN_URL = "https://oauth2.googleapis.com/token"
-
 
 def calendar_configured(user_id: int) -> bool:
-    if not oauth_app_configured() or not user_id:
-        return False
-    conn = GoogleCalendarConnection.objects.filter(user_id=user_id).first()
-    return bool(conn and conn.refresh_token)
+    return oauth_app_configured() and is_connected(user_id)
 
 
-def _client_id() -> str:
-    return (os.environ.get("GOOGLE_OAUTH_CLIENT_ID") or "").strip()
-
-
-def _client_secret() -> str:
-    return (os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET") or "").strip()
-
-
-def _connection(user_id: int) -> GoogleCalendarConnection:
-    conn = GoogleCalendarConnection.objects.filter(user_id=user_id).first()
+def _connection(user_id: int) -> GoogleConnection:
+    conn = GoogleConnection.objects.filter(user_id=user_id).first()
     if not conn or not conn.refresh_token:
-        raise ExpectedError("Google Calendar is not connected for this user")
+        raise ExpectedError("Google is not connected for this user")
     return conn
-
-
-def _credentials(user_id: int):
-    from google.oauth2.credentials import Credentials
-
-    conn = _connection(user_id)
-    return Credentials(
-        token=conn.access_token or None,
-        refresh_token=conn.refresh_token,
-        token_uri=TOKEN_URL,
-        client_id=_client_id(),
-        client_secret=_client_secret(),
-        scopes=SCOPES,
-    )
 
 
 def _calendar_service(user_id: int):
     from googleapiclient.discovery import build
 
-    return build("calendar", "v3", credentials=_credentials(user_id), cache_discovery=False)
+    return build("calendar", "v3", credentials=get_credentials(user_id), cache_discovery=False)
 
 
 def _calendar_id(user_id: int) -> str:
@@ -104,7 +76,7 @@ def create_meeting_event(
     description: str = "",
 ) -> dict:
     if not calendar_configured(user_id):
-        raise ExpectedError("Google Calendar is not connected for this user")
+        raise ExpectedError("Google is not connected for this user")
 
     start = _parse_start(start_iso)
     duration = max(15, min(int(duration_minutes or _default_duration(user_id)), 180))

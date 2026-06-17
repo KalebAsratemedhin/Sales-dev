@@ -41,7 +41,7 @@ A full-stack **autonomous sales development** system: lead storage, website rese
 | **Leads** | Store and list leads; filter by status (new, researched, emailed, replied, meeting_booked). Creation can trigger research via queue. |
 | **Research** | Fetch company website, run Gemini-based analysis, store summary and pain points; then enqueue outreach. |
 | **Outreach** | Consume research events; draft one personalized email per lead (Gemini + research + optional persona); send via Gmail (or stub); store thread and sent emails. |
-| **Inbox** | Connect Gmail in Settings; outreach provisions n8n per user to poll replies and POST to Outreach; the inbox agent drafts responses for n8n to send. |
+| **Inbox** | Connect Google in Settings (one OAuth for Gmail + Calendar); outreach provisions n8n per user to poll replies and POST to Outreach; outbound send uses Gmail API. |
 | **Dashboard** | Leads list and detail, system configuration (LinkedIn URL, Calendly, product docs path, Chroma), research/outreach monitors (UI), inbox-style thread view (UI). Wired today: Leads API and Outreach config. |
 
 *Planned but not yet implemented:* automated lead discovery from LinkedIn/Twitter; richer n8n ingestion workflows.
